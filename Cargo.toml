@@ -1,0 +1,12 @@
+[package]
+name = "naughts"
+version = "0.1.0"
+authors = ["Steve Pryde <spryde81@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+uuid = { version = "0.7", features = ["v4"]}
+argparse = "0.2"
+log = "0.4"
+chrono = "0.4"
+simplelog = "0.5"
