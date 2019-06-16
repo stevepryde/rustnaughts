@@ -3,6 +3,7 @@ use std::io;
 use std::path::PathBuf;
 
 pub mod engine;
+pub mod games;
 
 fn get_exe_dir() -> io::Result<PathBuf> {
     let mut dir = env::current_exe()?;

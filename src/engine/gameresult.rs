@@ -1,7 +1,8 @@
 
 use std::cmp::Ordering;
 use std::collections::HashMap;
-type GameScore = f32;
+pub type GameScore = f32;
+pub static NULL_SCORE: GameScore = -999.0;
 
 /// Game status enum.
 enum GameStatus {
@@ -20,9 +21,9 @@ impl Default for GameStatus {
 #[derive(Default)]
 /// A single game result.
 pub struct GameResult {
-    scores: HashMap<String, GameScore>,
+    scores: HashMap<char, GameScore>,
     status: GameStatus,
-    winner: String,
+    winner: Option<char>,
 }
 
 impl GameResult {
@@ -31,23 +32,23 @@ impl GameResult {
         GameResult {
             scores: HashMap::new(),
             status: GameStatus::Open,
-            winner: String::new(),
+            winner: None
         }
     }
 
     /// Set the score.
-    pub fn set_score(&mut self, identity: &str, score: GameScore) {
-        self.scores.insert(identity.to_string(), score);
+    pub fn set_score(&mut self, identity: char, score: GameScore) {
+        self.scores.insert(identity, score);
     }
 
     /// Get the score.
-    pub fn get_score(&self, identity: &str) -> Option<&GameScore> {
-        self.scores.get(identity)
+    pub fn get_score(&self, identity: char) -> Option<&GameScore> {
+        self.scores.get(&identity)
     }
 
     /// Get the winner's identity.
-    pub fn get_winner(&mut self) -> &str {
-        if self.winner.is_empty() {
+    pub fn get_winner(&mut self) -> char {
+        if let None = self.winner {
             assert!(!self.scores.is_empty(), "BUG: No winner - scores set yet!");
 
             self.winner =
@@ -58,20 +59,12 @@ impl GameResult {
                         Some(x) => x,
                         None => Ordering::Less,
                     }) {
-                    Some((k, _)) => k.clone(),
+                    Some((k, _)) => Some(*k),
                     _ => panic!("No scores!"),
                 };
-            // let mut highest = -999.0 as f32;
-            // for (k, v) in self.scores.iter() {
-            //     if *v > highest {
-            //         highest = *v;
-            //         self.winner = k.clone();
-            //     }
-            // }
-
         }
 
-        &self.winner
+        self.winner.unwrap()
     }
 
     /// Set game status to Win.
@@ -114,24 +107,28 @@ impl GameResult {
     }
 }
 
-#[test]
-fn test_result() {
-    let mut r = GameResult::new();
-    r.set_score("X", 1.0);
-    r.set_score("O", 1.1);
-    assert_eq!(r.get_winner(), "O");
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_result() {
+        let mut r = GameResult::new();
+        r.set_score('X', 1.0);
+        r.set_score('O', 1.1);
+        assert_eq!(r.get_winner(), 'O');
 
-    // Once set, the winner does not change.
-    r.set_score("A", 2.0);
-    assert_eq!(r.get_winner(), "O");
+        // Once set, the winner does not change.
+        r.set_score('A', 2.0);
+        assert_eq!(r.get_winner(), 'O');
 
-    assert!(!r.is_win());
-    r.set_win();
-    assert!(r.is_win());
+        assert!(!r.is_win());
+        r.set_win();
+        assert!(r.is_win());
 
-    r = GameResult::new();
-    r.set_score("A", 0.0);
-    r.set_score("B", 5.1);
-    r.set_score("C", 3.2);
-    assert_eq!(r.get_winner(), "B");
+        r = GameResult::new();
+        r.set_score('A', 0.0);
+        r.set_score('B', 5.1);
+        r.set_score('C', 3.2);
+        assert_eq!(r.get_winner(), 'B');
+    }
 }
