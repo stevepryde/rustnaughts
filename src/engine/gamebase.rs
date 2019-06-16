@@ -21,7 +21,7 @@ where
 {
   fn get_identities(&self) -> [char; 2];
   fn get_game_info(&self) -> &GameInfo;
-  fn get_bots(&self) -> [Box<dyn GamePlayer>; 2];
+  fn get_bots(&self) -> &[Box<dyn GamePlayer>; 2];
   fn set_bots(&mut self, bots: &[Box<dyn GamePlayer>; 2]);
   fn get_current_bot_index(&self) -> usize;
   fn set_current_bot_index(&mut self, index: usize);
@@ -30,7 +30,6 @@ where
   fn set_disqualified(&mut self, identity: char);
   fn get_disqualified(&self) -> Option<char>;
 
-  fn gameinfo(&self) -> &GameInfo;
   fn get_inputs(&self, identity: char) -> (Vec<f32>, Vec<u32>);
   fn update(&self, identity: char, output: u32);
   fn is_ended(&self) -> bool;

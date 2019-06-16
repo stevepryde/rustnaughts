@@ -60,19 +60,19 @@ impl Board {
   ///  3 | 4 | 5
   /// -----------
   ///  6 | 7 | 8
-  pub fn getat(&self, pos: u8) -> char {
-    self.board_data.data.chars().nth(pos as usize).unwrap()
+  pub fn getat(&self, pos: usize) -> char {
+    self.board_data.data.chars().nth(pos).unwrap()
   }
 
   /// Set the character for the specified position.
-  pub fn setat(&mut self, pos: u8, turn: char) {
+  pub fn setat(&mut self, pos: usize, turn: char) {
     let mut newdata = if pos > 0 {
-      self.board_data.data[..pos as usize].to_string()
+      self.board_data.data[..pos].to_string()
     } else {
       String::new()
     };
     newdata.push(turn);
-    if pos < (self.board_data.data.len() as u8 - 1) {
+    if pos < (self.board_data.data.len() - 1) {
       newdata.push_str(&self.board_data.data[pos as usize + 1..]);
     }
     self.board_data.data = newdata;
@@ -109,7 +109,7 @@ impl Board {
     for seq in sequences.iter() {
       let mut val = String::new();
       for c in seq.chars() {
-        val.push(self.getat(c.to_digit(10).unwrap() as u8));
+        val.push(self.getat(c.to_digit(10).unwrap() as usize));
       }
 
       if val == "XXX" {
@@ -157,7 +157,7 @@ impl Board {
   pub fn getat_multi(&self, pos_str: &str) -> String {
     let mut contents = String::new();
     for c in pos_str.chars() {
-      contents.push(self.getat(c.to_digit(10).unwrap() as u8));
+      contents.push(self.getat(c.to_digit(10).unwrap() as usize));
     }
     contents
   }
@@ -192,9 +192,9 @@ impl Board {
   }
 
   /// Get the position of the first empty space from the list of positions.
-  pub fn get_first_empty_space(&self, positions: &str) -> Option<u8> {
+  pub fn get_first_empty_space(&self, positions: &str) -> Option<usize> {
     for c in positions.chars() {
-      let pos = c.to_digit(10).unwrap() as u8;
+      let pos = c.to_digit(10).unwrap() as usize;
       if self.getat(pos) == ' ' {
         return Some(pos);
       }
@@ -204,11 +204,11 @@ impl Board {
   }
 
   /// Get all possible moves for the specified board.
-  pub fn get_possible_moves(&self) -> Vec<u8> {
+  pub fn get_possible_moves(&self) -> Vec<u32> {
     let mut moves = Vec::new();
     for index in 0..9 {
       if self.getat(index) == ' ' {
-        moves.push(index);
+        moves.push(index as u32);
       }
     }
     moves
