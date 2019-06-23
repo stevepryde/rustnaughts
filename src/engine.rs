@@ -6,3 +6,6 @@ pub mod gameobject;
 pub mod gameplayer;
 pub mod gameresult;
 pub mod log;
+pub mod runners {
+  pub mod singlerunner;
+}

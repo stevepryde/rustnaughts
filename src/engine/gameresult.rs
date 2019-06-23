@@ -32,7 +32,7 @@ impl GameResult {
         GameResult {
             scores: HashMap::new(),
             status: GameStatus::Open,
-            winner: None
+            winner: None,
         }
     }
 
@@ -47,24 +47,31 @@ impl GameResult {
     }
 
     /// Get the winner's identity.
-    pub fn get_winner(&mut self) -> char {
-        if let None = self.winner {
-            assert!(!self.scores.is_empty(), "BUG: No winner - scores set yet!");
-
-            self.winner =
-                match self
-                    .scores
-                    .iter()
-                    .max_by(|(_, v), (_, v2)| match v.partial_cmp(&v2) {
-                        Some(x) => x,
-                        None => Ordering::Less,
-                    }) {
-                    Some((k, _)) => Some(*k),
-                    _ => panic!("No scores!"),
-                };
+    pub fn derive_winner(&mut self) -> char {
+        if self.winner.is_none() {
+            self.winner = Some(self.get_winner())
         }
 
         self.winner.unwrap()
+    }
+
+    pub fn get_winner(&self) -> char {
+        if self.winner.is_none() {
+            assert!(!self.scores.is_empty(), "BUG: No winner - scores set yet!");
+
+            match self
+                .scores
+                .iter()
+                .max_by(|(_, v), (_, v2)| match v.partial_cmp(&v2) {
+                    Some(x) => x,
+                    None => Ordering::Less,
+                }) {
+                Some((k, _)) => *k,
+                _ => panic!("No scores!"),
+            }
+        } else {
+            self.winner.unwrap()
+        }
     }
 
     /// Set game status to Win.
@@ -103,6 +110,15 @@ impl GameResult {
         match self.status {
             GameStatus::Batch => true,
             _ => false,
+        }
+    }
+
+    pub fn to_string(&self) -> String {
+        match self.status {
+            GameStatus::Open => String::from("Game in progress"),
+            GameStatus::Tie => String::from("RESULT: Tie"),
+            GameStatus::Win => format!("RESULT: {} wins!", self.get_winner()),
+            GameStatus::Batch => format!("BATCH RESULT: {:?}", self.scores),
         }
     }
 }

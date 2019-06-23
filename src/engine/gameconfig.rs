@@ -14,8 +14,8 @@ fn exit_with_error(err: &str) {
 
 /// The config required to construct bots.
 pub struct BotConfig {
-    bot_names: [String; 2],
-    game: String,
+    pub bot_names: [String; 2],
+    pub game: String,
 }
 
 impl Default for BotConfig {
@@ -29,9 +29,9 @@ impl Default for BotConfig {
 
 /// The config required to process one batch.
 pub struct BatchConfig {
-    batch_size: u32,
-    game: String,
-    magic: bool,
+    pub batch_size: u32,
+    pub game: String,
+    pub magic: bool,
 }
 
 impl Default for BatchConfig {
@@ -56,8 +56,8 @@ impl Default for GeneticConfig {
     fn default() -> Self {
         GeneticConfig {
             num_generations: 0,
-            num_samples: 1,
-            keep_samples: 1,
+            num_samples: 0,
+            keep_samples: 0,
             wild_samples: 0,
         }
     }
@@ -66,11 +66,13 @@ impl Default for GeneticConfig {
 /// The main game config struct. All of its members are read-only outside this struct.
 pub struct GameConfig {
     pub path: PathBuf,
+    pub game: String,
     pub silent: bool,
     pub console_logging: bool,
     pub batch_mode: bool,
     pub genetic_mode: bool,
     pub no_batch_summary: bool,
+    pub run_mode: String,
     log_base_dir: PathBuf,
     data_base_dir: PathBuf,
     bot_config: BotConfig,
@@ -89,11 +91,13 @@ impl GameConfig {
 
         GameConfig {
             path,
+            game: String::new(),
             silent: false,
             console_logging: false,
             batch_mode: false,
             genetic_mode: false,
             no_batch_summary: false,
+            run_mode: String::new(),
             log_base_dir,
             data_base_dir,
             bot_config: BotConfig::default(),
@@ -107,6 +111,14 @@ impl GameConfig {
         self.parse_args();
         self.sanitise_args();
         self.init_logging().expect("Error setting up logging");
+
+        if self.genetic_mode {
+            self.run_mode = String::from("GENETIC");
+        } else if self.batch_mode {
+            self.run_mode = String::from("BATCH");
+        } else {
+            self.run_mode = String::from("SINGLE");
+        }
     }
 
     /// Parse CLI args.
@@ -168,13 +180,14 @@ impl GameConfig {
         self.bot_config.bot_names[1] = bot2;
 
         self.batch_config.game = game.clone();
+        self.game = game.clone();
         self.bot_config.game = game;
     }
 
     /// Sanitise CLI args into sane defaults and catch errors.
     fn sanitise_args(&mut self) {
         // Tidy up default args.
-        if self.batch_config.batch_size > 0 {
+        if self.batch_config.batch_size > 1 {
             self.batch_mode = true;
         }
 

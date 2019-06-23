@@ -2,34 +2,19 @@
 ///
 /// It consists of 9 characters, 3 lots of 3, reading left to right, top to bottom.
 /// - is a blank space. X and O are represented by those letters (uppercase).
+use serde_json;
 
 use crate::engine::gameobject::GameObject;
-use serde::Deserialize;
-use serde::Serialize;
 
-/// BoardData contains just the raw data. This is split out so that we can
-/// use this with GameObject.
-#[derive(Deserialize, Serialize, Clone)]
-pub struct BoardData {
-  data: String,
-}
-
-impl Default for BoardData {
-  fn default() -> Self {
-    BoardData {
-      data: String::from("---------"),
-    }
-  }
-}
 
 pub struct Board {
-  board_data: BoardData,
+  data: String,
 }
 
 impl Default for Board {
   fn default() -> Self {
     Board {
-      board_data: BoardData::default(),
+      data: String::from("---------"),
     }
   }
 }
@@ -38,18 +23,14 @@ impl Default for Board {
 impl Board {
   /// Create a new Board object.
   pub fn new() -> Self {
-    let board_data = BoardData {
-      data: String::from("---------"),
-    };
-    Board { board_data }
+    Board::default()
   }
 
   /// Make and return a copy of this Board.
   pub fn copy(&self) -> Self {
-    let board_data = BoardData {
-      data: self.board_data.data.clone(),
-    };
-    Board { board_data }
+    Board {
+      data: self.data.clone(),
+    }
   }
 
   /// Get the character at the specified position.
@@ -61,21 +42,26 @@ impl Board {
   /// -----------
   ///  6 | 7 | 8
   pub fn getat(&self, pos: usize) -> char {
-    self.board_data.data.chars().nth(pos).unwrap()
+    let c = self.data.chars().nth(pos).unwrap();
+    if c == '-' {
+      ' '
+    } else {
+      c
+    }
   }
 
   /// Set the character for the specified position.
   pub fn setat(&mut self, pos: usize, turn: char) {
     let mut newdata = if pos > 0 {
-      self.board_data.data[..pos].to_string()
+      self.data[..pos].to_string()
     } else {
       String::new()
     };
     newdata.push(turn);
-    if pos < (self.board_data.data.len() - 1) {
-      newdata.push_str(&self.board_data.data[pos as usize + 1..]);
+    if pos < (self.data.len() - 1) {
+      newdata.push_str(&self.data[pos as usize + 1..]);
     }
-    self.board_data.data = newdata;
+    self.data = newdata;
   }
 
   /// Display this board on the screen.
@@ -176,16 +162,9 @@ impl Board {
     for _ in 0..rot {
       let mut new_data = String::new();
       for pos in transform_map.iter() {
-        new_data.push(
-          board_copy
-            .board_data
-            .data
-            .chars()
-            .nth(*pos as usize)
-            .unwrap(),
-        );
+        new_data.push(board_copy.data.chars().nth(*pos as usize).unwrap());
       }
-      board_copy.board_data.data = new_data;
+      board_copy.data = new_data;
     }
 
     board_copy
@@ -216,12 +195,14 @@ impl Board {
 }
 
 /// GameObject lets us serialise and deserialise the contents as JSON.
-impl GameObject<BoardData> for Board {
-  fn get_data(&self) -> &BoardData {
-    &self.board_data
+impl GameObject for Board {
+  fn to_json(&self) -> serde_json::Value {
+    serde_json::json!({
+      "data": self.data.clone()
+    })
   }
 
-  fn set_data(&mut self, data: &BoardData) {
-    self.board_data = data.clone();
+  fn from_json(&mut self, value: &serde_json::Value) {
+    self.data = value.get("data").unwrap().to_string();
   }
 }
