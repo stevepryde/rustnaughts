@@ -10,6 +10,7 @@ pub mod engine;
 pub mod games;
 
 use engine::runners::batchrunner::batch_runner;
+use engine::runners::geneticrunner::genetic_runner;
 use engine::runners::singlerunner::single_runner;
 
 
@@ -26,10 +27,9 @@ fn main() {
 
     info!("Using {} game runner", config.run_mode);
     let runner = match config.run_mode.as_str() {
-        // "GENETIC" => GeneticRunner::new(config),
-        // "BATCH" => BatchRunner::new(config),
         "SINGLE" => single_runner,
         "BATCH" => batch_runner,
+        "GENETIC" => genetic_runner,
         _ => {
             println!("Invalid game runner: {}", config.run_mode);
             std::process::exit(1);

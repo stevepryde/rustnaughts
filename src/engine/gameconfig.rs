@@ -46,10 +46,10 @@ impl Default for BatchConfig {
 
 /// The config required for genetic runner.
 pub struct GeneticConfig {
-    num_generations: u32,
-    num_samples: u32,
-    keep_samples: u32,
-    wild_samples: u32,
+    pub num_generations: u32,
+    pub num_samples: u32,
+    pub keep_samples: u32,
+    pub wild_samples: u32,
 }
 
 impl Default for GeneticConfig {

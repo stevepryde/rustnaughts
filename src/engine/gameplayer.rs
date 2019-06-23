@@ -8,6 +8,7 @@ pub struct PlayerData {
   pub score: GameScore,
   pub should_show_result: bool,
   pub is_magic: bool,
+  pub is_genetic: bool,
 }
 
 
@@ -50,6 +51,10 @@ pub trait GamePlayer: GameObject {
 
   fn is_magic(&self) -> bool {
     self.get_data().is_magic
+  }
+
+  fn is_genetic(&self) -> bool {
+    self.get_data().is_genetic
   }
 
   fn label(&self) -> String {

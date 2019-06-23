@@ -1,3 +1,4 @@
+use crate::engine::gamebase::GameInfo;
 use crate::engine::gameobject::GameObject;
 use crate::engine::gameplayer::{GamePlayer, PlayerData};
 use rand::Rng;
@@ -9,7 +10,7 @@ pub struct RandomBot {
 }
 
 impl RandomBot {
-  pub fn new() -> Self {
+  pub fn new(_game_info: &GameInfo) -> Self {
     let mut data = PlayerData::default();
     data.name = String::from("RandomBot");
     RandomBot { player_data: data }
