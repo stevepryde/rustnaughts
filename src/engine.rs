@@ -7,5 +7,6 @@ pub mod gameplayer;
 pub mod gameresult;
 pub mod log;
 pub mod runners {
+  pub mod batchrunner;
   pub mod singlerunner;
 }

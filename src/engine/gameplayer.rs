@@ -3,11 +3,11 @@ use crate::engine::gameresult::{GameScore, NULL_SCORE};
 
 #[derive(Default)]
 pub struct PlayerData {
-  name: String,
-  identity: char,
-  score: GameScore,
-  should_show_result: bool,
-  is_magic: bool,
+  pub name: String,
+  pub identity: char,
+  pub score: GameScore,
+  pub should_show_result: bool,
+  pub is_magic: bool,
 }
 
 

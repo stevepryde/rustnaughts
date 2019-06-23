@@ -10,9 +10,9 @@ pub struct RandomBot {
 
 impl RandomBot {
   pub fn new() -> Self {
-    RandomBot {
-      player_data: PlayerData::default(),
-    }
+    let mut data = PlayerData::default();
+    data.name = String::from("RandomBot");
+    RandomBot { player_data: data }
   }
 }
 

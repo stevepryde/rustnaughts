@@ -21,6 +21,7 @@ pub trait GameTrait: GameObject {
   fn update(&mut self, identity: char, output: u32);
   fn is_ended(&self) -> bool;
   fn get_result(&self, bots: &BotList, num_turns: [u32; 2]) -> GameResult;
+  fn show(&self, _indent: u8) {}
 }
 
 pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
@@ -46,6 +47,9 @@ pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
 
     let output = bots[bot_index].process(inputs, &available_moves);
     game.update(identities[bot_index], output);
+    if config.run_mode == "SINGLE" {
+      game.show(4);
+    }
 
     bot_index = if bot_index == 0 { 1 } else { 0 };
   }
@@ -64,8 +68,8 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
 
   let batch_config = config.get_batch_config();
   let mut bot_states = Vec::new();
-  for index in 0..2 {
-    bot_states[index] = bots[index].to_json();
+  for bot in bots.iter() {
+    bot_states.push(bot.to_json());
   }
 
   let mut wins = HashMap::new();
