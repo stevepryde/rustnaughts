@@ -95,22 +95,22 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     }
   }
 
-  for index in 0..2 {
-    info!(
-      "{} WINS: {}",
-      bots[index].get_name(),
-      wins[&identities[index]]
-    );
-  }
-  info!("DRAW/TIE: {}\n", num_draws);
+  // for index in 0..2 {
+  //   info!(
+  //     "{} WINS: {}",
+  //     bots[index].get_name(),
+  //     wins[&identities[index]]
+  //   );
+  // }
+  // info!("DRAW/TIE: {}\n", num_draws);
 
   let mut final_result = GameResult::new();
   final_result.set_batch();
-  info!("Average Scores:");
+  // info!("Average Scores:");
   for index in 0..2 {
     let avg = total_score[index] as f32 / batch_config.batch_size as f32;
     final_result.set_score(identities[index], avg);
-    info!("{}: {:.3}", bots[index].get_name(), avg);
+    // info!("{}: {:.3}", bots[index].get_name(), avg);
   }
 
   final_result

@@ -17,10 +17,10 @@ pub trait GamePlayer: GameObject {
   fn get_data_mut(&mut self) -> &mut PlayerData;
 
   fn setup(&self, _identity: char) {}
-  fn process(&self, _inputs: Vec<f32>, _available_moves: &[u32]) -> u32 {
+  fn process(&mut self, _inputs: Vec<f32>, _available_moves: &[u32]) -> u32 {
     0
   }
-  fn process_magic(&self, _inputs: Vec<f32>, available_moves: &[u32]) -> Vec<u32> {
+  fn process_magic(&mut self, _inputs: Vec<f32>, available_moves: &[u32]) -> Vec<u32> {
     available_moves.to_vec()
   }
 
@@ -40,7 +40,7 @@ pub trait GamePlayer: GameObject {
     self.get_data_mut().score = score;
   }
 
-  fn mutate(&self) {}
+  fn mutate(&mut self) {}
   fn should_show_result(&self) -> bool {
     self.get_data().should_show_result
   }

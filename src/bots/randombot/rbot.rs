@@ -33,7 +33,7 @@ impl GamePlayer for RandomBot {
     &mut self.player_data
   }
 
-  fn process(&self, _inputs: Vec<f32>, available_moves: &[u32]) -> u32 {
+  fn process(&mut self, _inputs: Vec<f32>, available_moves: &[u32]) -> u32 {
     let idx = rand::thread_rng().gen_range(0, available_moves.len());
     available_moves[idx]
   }

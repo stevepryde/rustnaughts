@@ -89,7 +89,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
   let other_bot = &bots[other_index];
   let other_name = bot_config.bot_names[other_index].as_str();
 
-
+  // TODO: figure out how to use selected_samples properly.
   let mut selected_samples = Vec::new();
   let mut score_threshold = -999.0;
 
@@ -160,16 +160,21 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
       continue;
     }
 
-    let diff = selected_samples.len() - filtered_pool.len();
+    let diff: i32 = selected_samples.len() as i32 - filtered_pool.len() as i32;
     if diff > 0 {
-      for index in 0..diff {
-        filtered_pool.push(&selected_samples[index]);
+      let udiff = diff as usize;
+      for sample in &selected_samples[0..udiff] {
+        filtered_pool.push(sample);
       }
     }
 
     filtered_pool.sort_by(|a, b| a.get_score().partial_cmp(&b.get_score()).unwrap());
     let keep = cmp::min(genetic_config.keep_samples as usize, filtered_pool.len());
-    let selected_samples = filtered_pool[0..keep].to_vec();
+    selected_samples.clear();
+    for i in 0..keep {
+      selected_samples.push(*filtered_pool.pop().unwrap());
+    }
+    // selected_samples = filtered_pool[0..keep].to_vec();
 
     let mut selected_scores = Vec::new();
     for sample in selected_samples {

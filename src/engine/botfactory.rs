@@ -1,3 +1,4 @@
+use crate::bots::genbot3::gbot::GenBot3;
 use crate::bots::randombot::rbot::RandomBot;
 
 use crate::engine::gamebase::GameInfo;
@@ -11,6 +12,7 @@ pub type BotListMut = Vec<Box<dyn GamePlayer>>;
 pub fn create_bot(bot_name: &str, game_info: &GameInfo) -> Box<dyn GamePlayer> {
   match bot_name {
     "randombot" => Box::new(RandomBot::new(game_info)),
+    "genbot3" => Box::new(GenBot3::new(game_info)),
     _ => {
       println!("Unknown bot: {}", bot_name);
       panic!("Bailing out");
@@ -27,7 +29,11 @@ pub fn create_bots(bot_config: &BotConfig) -> BotListMut {
   ]
 }
 
-pub fn clone_bot(bot_name: &str, game_info: &GameInfo, src_bot: &Box<dyn GamePlayer>) -> Box<dyn GamePlayer> {
+pub fn clone_bot(
+  bot_name: &str,
+  game_info: &GameInfo,
+  src_bot: &Box<dyn GamePlayer>,
+) -> Box<dyn GamePlayer> {
   let mut bot = create_bot(bot_name, game_info);
   bot.from_json(&src_bot.to_json());
   bot
