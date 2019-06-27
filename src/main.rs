@@ -4,7 +4,6 @@ use std::io;
 use std::path::PathBuf;
 use std::time::Instant;
 
-
 pub mod bots;
 pub mod engine;
 pub mod games;
@@ -12,7 +11,6 @@ pub mod games;
 use engine::runners::batchrunner::batch_runner;
 use engine::runners::geneticrunner::genetic_runner;
 use engine::runners::singlerunner::single_runner;
-
 
 fn get_exe_dir() -> io::Result<PathBuf> {
     let mut dir = env::current_exe()?;
