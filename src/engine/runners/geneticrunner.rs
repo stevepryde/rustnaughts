@@ -201,7 +201,9 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
     let mut selected_scores = Vec::new();
     for recipe in &selected_recipes {
       if recipe.1 > score_threshold {
-        score_threshold = recipe.1;
+        // Lifting the score more slowly avoids getting stuck due to a random fluke
+        // increasing it out of reach in one jump.
+        score_threshold += (recipe.1 - score_threshold) * 0.2;
         writeln!(scores_file, "{}", recipe.0.to_string()).expect("Error writing scores.csv");
       }
 

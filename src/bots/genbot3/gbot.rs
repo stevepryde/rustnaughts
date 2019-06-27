@@ -103,7 +103,7 @@ impl GenBot3 {
             next_index += 1;
         }
 
-        let num_inputs = 30;
+        let num_inputs = 20;
         for _ in 0..game_info.output_count {
             let mut instance = NodeOutput::default();
             let indexes: Vec<usize> = (0..self.nodes.len()).collect();
