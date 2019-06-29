@@ -62,10 +62,14 @@ pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
 }
 
 pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
+    let batch_config = config.get_batch_config();
+    if batch_config.magic {
+        return run_magic_batch(config, bots);
+    }
+
     let game = create_game(config.game.as_str());
     let identities = game.get_identities();
 
-    let batch_config = config.get_batch_config();
     let mut bot_states = Vec::new();
     for bot in bots.iter() {
         bot_states.push(bot.to_json());
@@ -123,10 +127,133 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     final_result
 }
 
-pub fn run_magic_batch(_config: &GameConfig, _bots: &mut BotList) -> GameResult {
+struct GameState {
+    game_state: serde_json::Value,
+    bot_state: serde_json::Value,
+    num_turns: [u32; 2],
+    bot_index: usize,
+}
+
+impl GameState {
+    pub fn new(
+        game_state: serde_json::Value,
+        bot_state: serde_json::Value,
+        num_turns: [u32; 2],
+        bot_index: usize,
+    ) -> Self {
+        GameState {
+            game_state,
+            bot_state,
+            num_turns,
+            bot_index,
+        }
+    }
+}
+
+
+pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
+    // Ensure 1 and only 1 bot is magic.
+    let magic_index = if bots[0].is_magic() {
+        assert!(!bots[1].is_magic(), "Both bots cannot be magic!");
+        0
+    } else {
+        assert!(bots[1].is_magic(), "At least 1 bot must be magic!");
+        1
+    };
+    let other_index = if magic_index == 0 { 1 } else { 0 };
+
+    let mut game = create_game(config.game.as_str());
+    let identities = game.get_identities();
+    let game_info = game.get_game_info();
+    for (index, bot) in bots.iter().enumerate() {
+        bot.setup(identities[index]);
+    }
+
+    // Each game state is a tuple containing game state and bot state.
+    let initial_state = GameState::new(game.to_json(), bots[other_index].to_json(), [0, 0], 0);
+    let mut game_stack = vec![initial_state];
+
+    let mut wins = HashMap::new();
+    let mut total_score = [0.0 as f32, 0.0 as f32];
+    let mut num_draws: u32 = 0;
+
+    let mut count = 0;
+    while !game_stack.is_empty() {
+        let state = game_stack.pop().expect("No game state on stack!");
+        game.from_json(&state.game_state);
+        bots[other_index].from_json(&state.bot_state);
+
+        if game.is_ended() {
+            count += 1;
+
+            let result = game.get_result(&bots, state.num_turns);
+            for index in 0..2 {
+                total_score[index] += result.get_score(identities[index]).unwrap();
+            }
+
+            if result.is_tie() {
+                num_draws += 1;
+            } else {
+                let winner = result.get_winner();
+                let current = *wins.entry(winner).or_insert(0);
+                wins.insert(winner, current + 1);
+            }
+        } else {
+            let mut new_num_turns = state.num_turns;
+            new_num_turns[state.bot_index] += 1;
+            let (inputs, available_moves) = game.get_inputs(identities[state.bot_index]);
+            assert_eq!(
+                inputs.len(),
+                game_info.input_count as usize,
+                "Game returned the wrong number of inputs!"
+            );
+
+            let outputs = if state.bot_index == magic_index {
+                bots[state.bot_index].process_magic(inputs, &available_moves)
+            } else {
+                vec![bots[state.bot_index].process(inputs, &available_moves)]
+            };
+            let new_bot_index = if state.bot_index == 0 { 1 } else { 0 };
+            for output in outputs {
+                game.update(identities[state.bot_index], output);
+                // Append new game state to the stack.
+                let new_state = GameState::new(
+                    game.to_json(),
+                    bots[other_index].to_json(),
+                    new_num_turns,
+                    new_bot_index,
+                );
+                game_stack.push(new_state);
+                game.from_json(&state.game_state);
+            }
+        }
+    }
+
+    if config.run_mode == "BATCH" {
+        for index in 0..2 {
+            info!(
+                "{} WINS: {}",
+                bots[index].get_name(),
+                wins.get(&identities[index]).unwrap_or(&0)
+            );
+        }
+        info!("DRAW/TIE: {}\n", num_draws);
+    }
+
     let mut final_result = GameResult::new();
     final_result.set_batch();
-    // TODO: Magic batch not implemented yet.
+
+    if config.run_mode == "BATCH" {
+        info!("Average Scores:");
+    }
+    for index in 0..2 {
+        let avg = total_score[index] as f32 / count as f32;
+        final_result.set_score(identities[index], avg);
+
+        if config.run_mode == "BATCH" {
+            info!("{}: {:.3}", bots[index].get_name(), avg);
+        }
+    }
 
     final_result
 }

@@ -88,7 +88,7 @@ where
       win.push('*');
     }
     debug!(
-      "Completed batch for sample {} :: score = {:3} {}",
+      "Completed batch for sample {} :: score = {:.3} {}",
       index, genetic_score, win
     );
     index += 1;
@@ -210,7 +210,11 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
       selected_scores.push(recipe.1);
     }
 
-    info!("Generation {} highest scores: {:?}", gen, selected_scores);
+    info!(
+      "Generation {} highest scores: {:?}",
+      gen,
+      selected_scores.iter().map(|x| format!("{:.3}", x))
+    );
   }
 
   Ok(())

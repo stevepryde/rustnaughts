@@ -1,5 +1,6 @@
 use crate::bots::genbot3::gbot::GenBot3;
 use crate::bots::randombot::rbot::RandomBot;
+use crate::bots::omnibot::obot::OmniBot;
 
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameconfig::BotConfig;
@@ -13,6 +14,7 @@ pub fn create_bot(bot_name: &str, game_info: &GameInfo) -> Box<dyn GamePlayer> {
     match bot_name {
         "randombot" => Box::new(RandomBot::new(game_info)),
         "genbot3" => Box::new(GenBot3::new(game_info)),
+        "omnibot" => Box::new(OmniBot::new(game_info)),
         _ => {
             println!("Unknown bot: {}", bot_name);
             panic!("Bailing out");

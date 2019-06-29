@@ -92,7 +92,6 @@ impl GameTrait for NaughtsGame {
         };
 
         self.board.setat(target_move as usize, identity);
-        // self.board.show(4);
     }
 
     fn is_ended(&self) -> bool {

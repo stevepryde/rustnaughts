@@ -16,10 +16,14 @@ pub trait GamePlayer: GameObject {
     fn get_data_mut(&mut self) -> &mut PlayerData;
 
     fn setup(&self, _identity: char) {}
-    fn process(&mut self, _inputs: Vec<f32>, _available_moves: &[u32]) -> u32 {
-        0
+    fn process(&mut self, _inputs: Vec<f32>, available_moves: &[u32]) -> u32 {
+        available_moves[0]
     }
     fn process_magic(&mut self, _inputs: Vec<f32>, available_moves: &[u32]) -> Vec<u32> {
+        assert!(
+            self.is_magic(),
+            "Bot is not magic - shouldn't be doing process_magic!()"
+        );
         available_moves.to_vec()
     }
 

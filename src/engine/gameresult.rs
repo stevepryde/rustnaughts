@@ -130,11 +130,11 @@ mod tests {
         let mut r = GameResult::new();
         r.set_score('X', 1.0);
         r.set_score('O', 1.1);
-        assert_eq!(r.get_winner(), 'O');
+        assert_eq!(r.derive_winner(), 'O');
 
         // Once set, the winner does not change.
         r.set_score('A', 2.0);
-        assert_eq!(r.get_winner(), 'O');
+        assert_eq!(r.derive_winner(), 'O');
 
         assert!(!r.is_win());
         r.set_win();
@@ -144,6 +144,6 @@ mod tests {
         r.set_score('A', 0.0);
         r.set_score('B', 5.1);
         r.set_score('C', 3.2);
-        assert_eq!(r.get_winner(), 'B');
+        assert_eq!(r.derive_winner(), 'B');
     }
 }

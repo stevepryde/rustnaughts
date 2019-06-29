@@ -201,6 +201,27 @@ impl GameObject for Board {
     }
 
     fn from_json(&mut self, value: &serde_json::Value) {
-        self.data = value.get("data").unwrap().to_string();
+        let v = match value.get("data") {
+            Some(x) => String::from(x.as_str().unwrap_or("---------")),
+            _ => String::from("---------"),
+        };
+        self.data = v;
+    }
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_result() {
+        let b = Board::new();
+        let state1 = b.to_json();
+        println!("State1 = {}", state1);
+        let mut b2 = Board::new();
+        b2.from_json(&state1);
+
+        assert_eq!(b.to_json(), state1, "State was exported the same twice");
+        assert_eq!(b2.to_json(), state1, "State was imported correctly");
     }
 }
