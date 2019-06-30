@@ -11,7 +11,7 @@ pub struct PlayerData {
     pub is_genetic: bool,
 }
 
-pub trait GamePlayer: GameObject {
+pub trait GamePlayer: GameObject + Send {
     fn get_data(&self) -> &PlayerData;
     fn get_data_mut(&mut self) -> &mut PlayerData;
 

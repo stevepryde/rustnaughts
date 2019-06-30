@@ -10,4 +10,7 @@ pub mod runners {
     pub mod batchrunner;
     pub mod geneticrunner;
     pub mod singlerunner;
+    pub mod genetic {
+        pub mod processor;
+    }
 }

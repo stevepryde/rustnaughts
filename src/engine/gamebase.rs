@@ -2,7 +2,7 @@ use log::*;
 use std::collections::HashMap;
 
 use crate::engine::botfactory::{create_bots, BotList};
-use crate::engine::gameconfig::GameConfig;
+use crate::engine::gameconfig::BatchConfig;
 use crate::engine::gamefactory::create_game;
 use crate::engine::gameobject::GameObject;
 use crate::engine::gameresult::GameResult;
@@ -23,8 +23,8 @@ pub trait GameTrait: GameObject {
     fn show(&self, _indent: u8) {}
 }
 
-pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
-    let mut game = create_game(config.game.as_str());
+pub fn run_one_game(game_name: &str, log_output: bool, bots: &mut BotList) -> GameResult {
+    let mut game = create_game(game_name);
     let game_info = game.get_game_info();
     let identities = game.get_identities();
     let mut num_turns: [u32; 2] = [0, 0];
@@ -46,7 +46,7 @@ pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
 
         let output = bots[bot_index].process(inputs, &available_moves);
         game.update(identities[bot_index], output);
-        if config.run_mode == "SINGLE" {
+        if log_output {
             game.show(4);
         }
 
@@ -61,13 +61,12 @@ pub fn run_one_game(config: &GameConfig, bots: &mut BotList) -> GameResult {
     result
 }
 
-pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
-    let batch_config = config.get_batch_config();
+pub fn run_batch(batch_config: &BatchConfig, log_output: bool, bots: &mut BotList) -> GameResult {
     if batch_config.magic {
-        return run_magic_batch(config, bots);
+        return run_magic_batch(batch_config, log_output, bots);
     }
 
-    let game = create_game(config.game.as_str());
+    let game = create_game(batch_config.game.as_str());
     let identities = game.get_identities();
 
     let mut bot_states = Vec::new();
@@ -79,12 +78,12 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     let mut total_score = [0.0 as f32, 0.0 as f32];
     let mut num_draws: u32 = 0;
     for _ in 0..batch_config.batch_size {
-        let mut bots_this_game = create_bots(config.get_bot_config());
+        let mut bots_this_game = create_bots(&batch_config.bot_config);
         for index in 0..2 {
             bots_this_game[index].from_json(&bot_states[index]);
         }
 
-        let result = run_one_game(config, &mut bots_this_game);
+        let result = run_one_game(batch_config.game.as_str(), false, &mut bots_this_game);
         for index in 0..2 {
             total_score[index] += result.get_score(identities[index]).unwrap();
         }
@@ -98,7 +97,7 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
         }
     }
 
-    if config.run_mode == "BATCH" {
+    if log_output {
         for index in 0..2 {
             info!(
                 "{} WINS: {}",
@@ -112,14 +111,14 @@ pub fn run_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     let mut final_result = GameResult::new();
     final_result.set_batch();
 
-    if config.run_mode == "BATCH" {
+    if log_output {
         info!("Average Scores:");
     }
     for index in 0..2 {
         let avg = total_score[index] as f32 / batch_config.batch_size as f32;
         final_result.set_score(identities[index], avg);
 
-        if config.run_mode == "BATCH" {
+        if log_output {
             info!("{}: {:.3}", bots[index].get_name(), avg);
         }
     }
@@ -150,8 +149,11 @@ impl GameState {
     }
 }
 
-
-pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
+pub fn run_magic_batch(
+    batch_config: &BatchConfig,
+    log_output: bool,
+    bots: &mut BotList,
+) -> GameResult {
     // Ensure 1 and only 1 bot is magic.
     let magic_index = if bots[0].is_magic() {
         assert!(!bots[1].is_magic(), "Both bots cannot be magic!");
@@ -162,7 +164,7 @@ pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     };
     let other_index = if magic_index == 0 { 1 } else { 0 };
 
-    let mut game = create_game(config.game.as_str());
+    let mut game = create_game(batch_config.game.as_str());
     let identities = game.get_identities();
     let game_info = game.get_game_info();
     for (index, bot) in bots.iter().enumerate() {
@@ -181,6 +183,8 @@ pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     while !game_stack.is_empty() {
         let state = game_stack.pop().expect("No game state on stack!");
         game.from_json(&state.game_state);
+        // TODO: Possibly don't need to do this. Bot state does not change outside of mutate().
+        // This magic runner is about 4x faster without this.
         bots[other_index].from_json(&state.bot_state);
 
         if game.is_ended() {
@@ -214,12 +218,13 @@ pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
                 vec![bots[state.bot_index].process(inputs, &available_moves)]
             };
             let new_bot_index = if state.bot_index == 0 { 1 } else { 0 };
+            let bot_state = bots[other_index].to_json();
             for output in outputs {
                 game.update(identities[state.bot_index], output);
                 // Append new game state to the stack.
                 let new_state = GameState::new(
                     game.to_json(),
-                    bots[other_index].to_json(),
+                    bot_state.clone(),
                     new_num_turns,
                     new_bot_index,
                 );
@@ -229,7 +234,10 @@ pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
         }
     }
 
-    if config.run_mode == "BATCH" {
+    if log_output {
+        info!("RESULTS:");
+        info!("Games Played: {}\n", count);
+
         for index in 0..2 {
             info!(
                 "{} WINS: {}",
@@ -243,14 +251,14 @@ pub fn run_magic_batch(config: &GameConfig, bots: &mut BotList) -> GameResult {
     let mut final_result = GameResult::new();
     final_result.set_batch();
 
-    if config.run_mode == "BATCH" {
+    if log_output {
         info!("Average Scores:");
     }
     for index in 0..2 {
         let avg = total_score[index] as f32 / count as f32;
         final_result.set_score(identities[index], avg);
 
-        if config.run_mode == "BATCH" {
+        if log_output {
             info!("{}: {:.3}", bots[index].get_name(), avg);
         }
     }

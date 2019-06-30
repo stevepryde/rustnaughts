@@ -1,11 +1,10 @@
-/// The Board struct provides a representation of a naughts and crosses board.
+use crate::engine::gameobject::GameObject;
+
+use log::info;
+use serde_json;
 ///
 /// It consists of 9 characters, 3 lots of 3, reading left to right, top to bottom.
 /// - is a blank space. X and O are represented by those letters (uppercase).
-use serde_json;
-
-use crate::engine::gameobject::GameObject;
-
 pub struct Board {
     data: String,
 }
@@ -67,7 +66,7 @@ impl Board {
         let prefix = format!("{:1$}", " ", indent as usize);
         let mut i = 0;
         for r in 0..3 {
-            println!(
+            info!(
                 "{} {} | {} | {} ",
                 prefix,
                 self.getat(i),
@@ -75,11 +74,11 @@ impl Board {
                 self.getat(i + 2)
             );
             if r < 2 {
-                println!("{}-----------", prefix);
+                info!("{}-----------", prefix);
             }
             i += 3;
         }
-        println!();
+        info!("");
     }
 
     /// Get the current game state as int.
@@ -208,7 +207,6 @@ impl GameObject for Board {
         self.data = v;
     }
 }
-
 
 #[cfg(test)]
 mod tests {

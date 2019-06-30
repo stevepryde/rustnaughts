@@ -12,26 +12,21 @@ fn exit_with_error(err: &str) {
     exit(1);
 }
 
+
 /// The config required to construct bots.
+#[derive(Default, Clone)]
 pub struct BotConfig {
     pub bot_names: [String; 2],
     pub game: String,
 }
 
-impl Default for BotConfig {
-    fn default() -> Self {
-        BotConfig {
-            bot_names: [String::new(), String::new()],
-            game: String::new(),
-        }
-    }
-}
-
 /// The config required to process one batch.
+#[derive(Clone)]
 pub struct BatchConfig {
     pub batch_size: u32,
     pub game: String,
     pub magic: bool,
+    pub bot_config: BotConfig,
 }
 
 impl Default for BatchConfig {
@@ -40,30 +35,34 @@ impl Default for BatchConfig {
             batch_size: 1,
             game: String::new(),
             magic: false,
+            bot_config: BotConfig::default(),
         }
     }
 }
 
 /// The config required for genetic runner.
 pub struct GeneticConfig {
+    pub game: String,
     pub num_generations: u32,
     pub num_samples: u32,
     pub keep_samples: u32,
     pub wild_samples: u32,
+    pub batch_config: BatchConfig,
 }
 
 impl Default for GeneticConfig {
     fn default() -> Self {
         GeneticConfig {
+            game: String::new(),
             num_generations: 0,
             num_samples: 0,
             keep_samples: 0,
             wild_samples: 0,
+            batch_config: BatchConfig::default(),
         }
     }
 }
 
-/// The main game config struct. All of its members are read-only outside this struct.
 pub struct GameConfig {
     pub path: PathBuf,
     pub game: String,
@@ -75,13 +74,16 @@ pub struct GameConfig {
     pub run_mode: String,
     log_base_dir: PathBuf,
     data_base_dir: PathBuf,
-    bot_config: BotConfig,
-    batch_config: BatchConfig,
-    genetic_config: GeneticConfig,
+    bot_names: [String; 2],
+    batch_size: u32,
+    magic: bool,
+    num_generations: u32,
+    num_samples: u32,
+    keep_samples: u32,
+    wild_samples: u32,
 }
 
 impl GameConfig {
-    /// Create a new GameConfig.
     pub fn new(path: PathBuf) -> Self {
         let mut log_base_dir = path.clone();
         log_base_dir.push("log");
@@ -100,9 +102,13 @@ impl GameConfig {
             run_mode: String::new(),
             log_base_dir,
             data_base_dir,
-            bot_config: BotConfig::default(),
-            batch_config: BatchConfig::default(),
-            genetic_config: GeneticConfig::default(),
+            bot_names: [String::new(), String::new()],
+            batch_size: 1,
+            magic: false,
+            num_generations: 0,
+            num_samples: 0,
+            keep_samples: 0,
+            wild_samples: 0,
         }
     }
 
@@ -141,33 +147,32 @@ impl GameConfig {
             ap.refer(&mut game)
                 .add_option(&["--game"], Store, "The game to run")
                 .required();
-            ap.refer(&mut self.batch_config.batch_size).add_option(
+            ap.refer(&mut self.batch_size).add_option(
                 &["--batch"],
                 Store,
                 "Batch mode. Specify the number of games to run per batch",
             );
-            ap.refer(&mut self.batch_config.magic).add_option(
+            ap.refer(&mut self.magic).add_option(
                 &["--magic"],
                 StoreTrue,
                 "Magic batch mode. Run all possible games against this bot.",
             );
-            ap.refer(&mut self.genetic_config.num_generations)
-                .add_option(
+            ap.refer(&mut self.num_generations).add_option(
                 &["--genetic"],
                 Store,
                 "Genetic mode. Specify number of generations to run (Requires --batch or --magic)",
             );
-            ap.refer(&mut self.genetic_config.num_samples).add_option(
+            ap.refer(&mut self.num_samples).add_option(
                 &["--samples"],
                 Store,
                 "Number of samples per generation. (Requires --genetic)",
             );
-            ap.refer(&mut self.genetic_config.keep_samples).add_option(
+            ap.refer(&mut self.keep_samples).add_option(
                 &["--keep"],
                 Store,
                 "Number of winning samples to 'keep' (Requires --genetic)",
             );
-            ap.refer(&mut self.genetic_config.wild_samples).add_option(
+            ap.refer(&mut self.wild_samples).add_option(
                 &["--wild"],
                 Store,
                 "Number of 'wild' (fresh, randomly generated) samples to include \
@@ -176,63 +181,60 @@ impl GameConfig {
             ap.parse_args_or_exit();
         }
 
-        self.bot_config.bot_names[0] = bot1;
-        self.bot_config.bot_names[1] = bot2;
-
-        self.batch_config.game = game.clone();
-        self.game = game.clone();
-        self.bot_config.game = game;
+        self.bot_names[0] = bot1;
+        self.bot_names[1] = bot2;
+        self.game = game;
     }
 
     /// Sanitise CLI args into sane defaults and catch errors.
     fn sanitise_args(&mut self) {
         // Tidy up default args.
-        if self.batch_config.batch_size > 1 {
+        if self.batch_size > 1 {
             self.batch_mode = true;
         }
 
-        if self.genetic_config.num_generations > 0 {
+        if self.num_generations > 0 {
             self.genetic_mode = true;
         }
 
-        if !self.batch_mode && !self.batch_config.magic {
+        if !self.batch_mode && !self.magic {
             if self.genetic_mode {
                 exit_with_error("Option --genetic requires --batch");
             }
-            if self.genetic_config.num_samples > 0 {
+            if self.num_samples > 0 {
                 exit_with_error("Option --samples requires --batch");
             }
-            if self.genetic_config.keep_samples > 0 {
+            if self.keep_samples > 0 {
                 exit_with_error("Option --keep requires --batch");
             }
-            if self.genetic_config.wild_samples > 0 {
+            if self.wild_samples > 0 {
                 exit_with_error("Option --wild requires --batch");
             }
         }
 
         if !self.genetic_mode {
-            if self.genetic_config.num_samples > 0 {
+            if self.num_samples > 0 {
                 exit_with_error("Option --samples requires --genetic");
             }
-            if self.genetic_config.keep_samples > 0 {
+            if self.keep_samples > 0 {
                 exit_with_error("Option --keep requires --genetic");
             }
-            if self.genetic_config.wild_samples > 0 {
+            if self.wild_samples > 0 {
                 exit_with_error("Option --wild requires --genetic");
             }
         }
 
-        if self.batch_config.magic {
+        if self.magic {
             if self.batch_mode {
                 exit_with_error("Cannot specify --batch with --magic");
             }
 
             // Magic flag implicitly enables batch mode.
-            self.batch_config.batch_size = 0;
+            self.batch_size = 0;
             self.batch_mode = true;
         }
 
-        if self.batch_config.magic || self.batch_mode {
+        if self.magic || self.batch_mode {
             self.silent = true;
 
             if self.genetic_mode {
@@ -263,18 +265,33 @@ impl GameConfig {
         &self.data_base_dir.as_path()
     }
 
-    /// Get the batch config.
-    pub fn get_batch_config(&self) -> &BatchConfig {
-        &self.batch_config
+    /// Get the bot config.
+    pub fn get_bot_config(&self) -> BotConfig {
+        BotConfig {
+            bot_names: self.bot_names.clone(),
+            game: self.game.clone(),
+        }
     }
 
-    /// Get the bot config.
-    pub fn get_bot_config(&self) -> &BotConfig {
-        &self.bot_config
+    /// Get the batch config.
+    pub fn get_batch_config(&self) -> BatchConfig {
+        BatchConfig {
+            batch_size: self.batch_size,
+            game: self.game.clone(),
+            magic: self.magic,
+            bot_config: self.get_bot_config(),
+        }
     }
 
     /// Get the genetic config.
-    pub fn get_genetic_config(&self) -> &GeneticConfig {
-        &self.genetic_config
+    pub fn get_genetic_config(&self) -> GeneticConfig {
+        GeneticConfig {
+            game: self.game.clone(),
+            num_generations: self.num_generations,
+            num_samples: self.num_samples,
+            keep_samples: self.keep_samples,
+            wild_samples: self.wild_samples,
+            batch_config: self.get_batch_config(),
+        }
     }
 }

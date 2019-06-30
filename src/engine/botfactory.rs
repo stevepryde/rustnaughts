@@ -1,6 +1,6 @@
 use crate::bots::genbot3::gbot::GenBot3;
-use crate::bots::randombot::rbot::RandomBot;
 use crate::bots::omnibot::obot::OmniBot;
+use crate::bots::randombot::rbot::RandomBot;
 
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameconfig::BotConfig;
@@ -34,9 +34,9 @@ pub fn create_bots(bot_config: &BotConfig) -> BotListMut {
 pub fn clone_bot(
     bot_name: &str,
     game_info: &GameInfo,
-    src_bot: &dyn GamePlayer,
+    src_bot_data: &serde_json::Value,
 ) -> Box<dyn GamePlayer> {
     let mut bot = create_bot(bot_name, game_info);
-    bot.from_json(&src_bot.to_json());
+    bot.from_json(src_bot_data);
     bot
 }

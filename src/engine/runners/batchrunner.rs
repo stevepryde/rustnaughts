@@ -5,7 +5,8 @@ use crate::engine::gamebase::run_batch;
 use crate::engine::gameconfig::GameConfig;
 
 pub fn batch_runner(config: GameConfig) -> Result<(), Box<Error>> {
-    let mut bots = create_bots(config.get_bot_config());
-    run_batch(&config, &mut bots);
+    let batch_config = config.get_batch_config();
+    let mut bots = create_bots(&batch_config.bot_config);
+    run_batch(&batch_config, true, &mut bots);
     Ok(())
 }
