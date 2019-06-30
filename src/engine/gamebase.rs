@@ -29,9 +29,10 @@ pub fn run_one_game(game_name: &str, log_output: bool, bots: &mut BotList) -> Ga
     let identities = game.get_identities();
     let mut num_turns: [u32; 2] = [0, 0];
 
-    for (index, bot) in bots.iter().enumerate() {
+    for (index, bot) in bots.iter_mut().enumerate() {
         num_turns[index] = 0;
-        bot.setup(identities[index]);
+        let other_index = if index == 0 { 1 } else { 0 };
+        bot.setup(identities[index], identities[other_index]);
     }
 
     let mut bot_index = 0;
@@ -167,8 +168,9 @@ pub fn run_magic_batch(
     let mut game = create_game(batch_config.game.as_str());
     let identities = game.get_identities();
     let game_info = game.get_game_info();
-    for (index, bot) in bots.iter().enumerate() {
-        bot.setup(identities[index]);
+    for (index, bot) in bots.iter_mut().enumerate() {
+        let other_index = if index == 0 { 1 } else { 0 };
+        bot.setup(identities[index], identities[other_index]);
     }
 
     // Each game state is a tuple containing game state and bot state.

@@ -23,6 +23,10 @@ impl Board {
         Board::default()
     }
 
+    pub fn clear(&mut self) {
+        self.data = String::from("---------")
+    }
+
     /// Make and return a copy of this Board.
     pub fn copy(&self) -> Self {
         Board {

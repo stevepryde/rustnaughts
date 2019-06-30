@@ -7,7 +7,7 @@ use crate::engine::gameconfig::GameConfig;
 
 pub fn single_runner(config: GameConfig) -> Result<(), Box<Error>> {
     let mut bots = create_bots(&config.get_bot_config());
-    let result = run_one_game(config.game.as_str(), true, &mut bots);
+    let result = run_one_game(config.game.as_str(), false, &mut bots);
     info!("{}", result.to_string());
     Ok(())
 }

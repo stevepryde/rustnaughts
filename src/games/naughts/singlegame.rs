@@ -106,7 +106,7 @@ impl GameTrait for NaughtsGame {
             }
         }
         if show {
-            self.board.show(0);
+            self.board.show(4);
         }
 
         let mut result = GameResult::new();

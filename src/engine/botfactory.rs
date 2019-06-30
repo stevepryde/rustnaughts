@@ -7,6 +7,8 @@ use crate::engine::gameconfig::BotConfig;
 use crate::engine::gamefactory::create_game;
 use crate::engine::gameplayer::GamePlayer;
 
+use crate::games::naughts;
+
 pub type BotList = [Box<dyn GamePlayer>];
 pub type BotListMut = Vec<Box<dyn GamePlayer>>;
 
@@ -15,6 +17,7 @@ pub fn create_bot(bot_name: &str, game_info: &GameInfo) -> Box<dyn GamePlayer> {
         "randombot" => Box::new(RandomBot::new(game_info)),
         "genbot3" => Box::new(GenBot3::new(game_info)),
         "omnibot" => Box::new(OmniBot::new(game_info)),
+        "naughts.human" => Box::new(naughts::bots::hbot::HumanBot::new(game_info)),
         _ => {
             println!("Unknown bot: {}", bot_name);
             panic!("Bailing out");
