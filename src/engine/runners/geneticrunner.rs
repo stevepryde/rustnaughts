@@ -1,11 +1,11 @@
-use log::{info, warn};
+use log::{error, info, warn};
 use std::cmp;
 use std::env;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
 
-
+use crate::engine::botdb::BotDB;
 use crate::engine::botfactory::{create_bot, create_bots, BotListMut};
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameconfig::GameConfig;
@@ -14,11 +14,18 @@ use crate::engine::runners::genetic::processor::{
     BatchProcessor, GeneticRecipe, MTBatchProcessor, STBatchProcessor,
 };
 
-
-fn generate_original_samples(bot_name: &str, game_info: &GameInfo, count: u32) -> BotListMut {
+fn generate_original_samples(
+    bot_name: &str,
+    game_info: &GameInfo,
+    count: u32,
+    recipe: &serde_json::Value,
+) -> BotListMut {
     let mut samples_out = Vec::new();
     for _ in 0..count {
-        let bot = create_bot(bot_name, game_info);
+        let mut bot = create_bot(bot_name, game_info);
+        if !recipe.is_null() {
+            bot.from_json(recipe);
+        }
         samples_out.push(bot);
     }
 
@@ -64,6 +71,8 @@ pub fn filter_samples(selected_recipes: &mut Vec<GeneticRecipe>, keep_samples: u
 }
 
 pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
+    let botdb = config.botdb;
+    let botrecipe = &config.botrecipe;
     let genetic_config = config.get_genetic_config();
     let batch_config = genetic_config.batch_config;
     let bots = create_bots(&batch_config.bot_config);
@@ -96,19 +105,25 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
     let mut selected_recipes = Vec::new();
     let mut score_threshold = -999.0;
 
-    let scores_path = match env::current_exe() {
-        Ok(x) => {
-            let mut p = x.parent().expect("Error getting parent dir").to_path_buf();
-            p.push("scores.csv");
-            p
-        }
-        _ => panic!("Error getting current exe path"),
+    let mut scores_file = if botdb {
+        let scores_path = match env::current_exe() {
+            Ok(x) => {
+                let mut p = x.parent().expect("Error getting parent dir").to_path_buf();
+                p.push("scores.csv");
+                p
+            }
+            _ => panic!("Error getting current exe path"),
+        };
+        Some(
+            OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(scores_path)
+                .expect("Error opening scores.csv"),
+        )
+    } else {
+        None
     };
-    let mut scores_file = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open(scores_path)
-        .expect("Error opening scores.csv");
 
     let processor = MTBatchProcessor::new(
         6,
@@ -134,7 +149,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
         info!("Generation {}:", gen);
 
         let mut new_samples = if selected_recipes.is_empty() {
-            generate_original_samples(genetic_name, &game_info, num_samples)
+            generate_original_samples(genetic_name, &game_info, num_samples, botrecipe)
         } else {
             generate_samples(genetic_name, &game_info, &selected_recipes, num_samples)
         };
@@ -144,6 +159,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
                 genetic_name,
                 &game_info,
                 num_samples,
+                botrecipe,
             ));
         }
 
@@ -165,8 +181,17 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
                 // Lifting the score more slowly avoids getting stuck due to a random fluke
                 // increasing it out of reach in one jump.
                 score_threshold += (recipe.genetic_score - score_threshold) * 0.2;
-                writeln!(scores_file, "{}", recipe.recipe.to_string())
-                    .expect("Error writing scores.csv");
+
+                // Write scores somewhere.
+                if botdb {
+                    match BotDB::new().save_bot(&genetic_name, &recipe.recipe, recipe.genetic_score)
+                    {
+                        Ok(x) => info!("BotID {}", x),
+                        Err(x) => error!("Error saving bot: {}", x),
+                    };
+                } else if let Some(x) = &mut scores_file {
+                    writeln!(x, "{}", recipe.recipe.to_string()).expect("Error writing scores.csv");
+                }
             }
 
             selected_scores.push(recipe.genetic_score);

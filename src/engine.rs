@@ -1,4 +1,6 @@
+pub mod botdb;
 pub mod botfactory;
+pub mod errors;
 pub mod gamebase;
 pub mod gameconfig;
 pub mod gamefactory;

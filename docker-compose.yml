@@ -1,0 +1,11 @@
+# Compose file for mongodb (for storing bot recipes).
+version: "3"
+services:
+  mongo:
+    image: mongo
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - /data/mongo:/data/db
+    network_mode: "host"
+    restart: unless-stopped

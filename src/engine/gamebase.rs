@@ -93,8 +93,7 @@ pub fn run_batch(batch_config: &BatchConfig, log_output: bool, bots: &mut BotLis
             num_draws += 1;
         } else {
             let winner = result.get_winner();
-            let current = *wins.entry(winner).or_insert(0);
-            wins.insert(winner, current + 1);
+            *wins.entry(winner).or_insert(0) += 1;
         }
     }
 
@@ -103,7 +102,7 @@ pub fn run_batch(batch_config: &BatchConfig, log_output: bool, bots: &mut BotLis
             info!(
                 "{} WINS: {}",
                 bots[index].get_name(),
-                wins[&identities[index]]
+                wins.entry(identities[index]).or_default()
             );
         }
         info!("DRAW/TIE: {}\n", num_draws);

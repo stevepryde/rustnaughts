@@ -1,9 +1,11 @@
 use argparse::{ArgumentParser, Store, StoreTrue};
+use serde_json;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
+use crate::engine::botdb::BotDB;
 use crate::engine::log;
 
 /// Exit with the specified error message.
@@ -72,6 +74,8 @@ pub struct GameConfig {
     pub genetic_mode: bool,
     pub no_batch_summary: bool,
     pub run_mode: String,
+    pub botdb: bool,
+    pub botrecipe: serde_json::Value,
     log_base_dir: PathBuf,
     data_base_dir: PathBuf,
     bot_names: [String; 2],
@@ -109,6 +113,8 @@ impl GameConfig {
             num_samples: 0,
             keep_samples: 0,
             wild_samples: 0,
+            botrecipe: serde_json::Value::Null,
+            botdb: false,
         }
     }
 
@@ -132,6 +138,7 @@ impl GameConfig {
         let mut game = String::new();
         let mut bot1 = String::new();
         let mut bot2 = String::new();
+        let mut botid = String::new();
 
         {
             let mut ap = ArgumentParser::new();
@@ -178,12 +185,26 @@ impl GameConfig {
                 "Number of 'wild' (fresh, randomly generated) samples to include \
                  in each generation",
             );
+            ap.refer(&mut botid)
+                .add_option(&["--botid"], Store, "The botID to load from botdb");
+            ap.refer(&mut self.botdb).add_option(
+                &["--botdb"],
+                StoreTrue,
+                "Use BotDB to store recipes",
+            );
             ap.parse_args_or_exit();
         }
 
         self.bot_names[0] = bot1;
         self.bot_names[1] = bot2;
         self.game = game;
+
+        if !botid.is_empty() {
+            match BotDB::new().load_bot(botid.as_str()) {
+                Ok(x) => self.botrecipe = x,
+                Err(x) => exit_with_error(format!("Failed to load bot: {}", x).as_str()),
+            };
+        }
     }
 
     /// Sanitise CLI args into sane defaults and catch errors.
