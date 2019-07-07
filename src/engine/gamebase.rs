@@ -23,17 +23,20 @@ pub trait GameTrait: GameObject {
     fn show(&self, _indent: u8) {}
 }
 
+fn setup_bots(bots: &mut BotList, identities: [char; 2]) {
+    for (index, bot) in bots.iter_mut().enumerate() {
+        let other_index = if index == 0 { 1 } else { 0 };
+        bot.setup(identities[index], identities[other_index]);
+    }
+}
+
 pub fn run_one_game(game_name: &str, log_output: bool, bots: &mut BotList) -> GameResult {
     let mut game = create_game(game_name);
     let game_info = game.get_game_info();
     let identities = game.get_identities();
     let mut num_turns: [u32; 2] = [0, 0];
 
-    for (index, bot) in bots.iter_mut().enumerate() {
-        num_turns[index] = 0;
-        let other_index = if index == 0 { 1 } else { 0 };
-        bot.setup(identities[index], identities[other_index]);
-    }
+    setup_bots(bots, identities);
 
     let mut bot_index = 0;
     while !game.is_ended() {
@@ -167,10 +170,8 @@ pub fn run_magic_batch(
     let mut game = create_game(batch_config.game.as_str());
     let identities = game.get_identities();
     let game_info = game.get_game_info();
-    for (index, bot) in bots.iter_mut().enumerate() {
-        let other_index = if index == 0 { 1 } else { 0 };
-        bot.setup(identities[index], identities[other_index]);
-    }
+
+    setup_bots(bots, identities);
 
     // Each game state is a tuple containing game state and bot state.
     let initial_state = GameState::new(game.to_json(), bots[other_index].to_json(), [0, 0], 0);

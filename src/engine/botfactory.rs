@@ -7,6 +7,7 @@ use crate::engine::gameconfig::BotConfig;
 use crate::engine::gamefactory::create_game;
 use crate::engine::gameplayer::GamePlayer;
 
+use crate::games::connect4;
 use crate::games::naughts;
 
 pub type BotList = [Box<dyn GamePlayer>];
@@ -18,6 +19,7 @@ pub fn create_bot(bot_name: &str, game_info: &GameInfo) -> Box<dyn GamePlayer> {
         "genbot3" => Box::new(GenBot3::new(game_info)),
         "omnibot" => Box::new(OmniBot::new(game_info)),
         "naughts.human" => Box::new(naughts::bots::hbot::HumanBot::new(game_info)),
+        "connect4.human" => Box::new(connect4::bots::hbot::HumanConnect4Bot::new(game_info)),
         _ => {
             println!("Unknown bot: {}", bot_name);
             panic!("Bailing out");

@@ -73,6 +73,9 @@ pub fn filter_samples(selected_recipes: &mut Vec<GeneticRecipe>, keep_samples: u
 pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
     let botdb = config.botdb;
     let botrecipe = &config.botrecipe;
+    if !botrecipe.is_null() {
+        info!("Loaded recipe from BotDB");
+    }
     let genetic_config = config.get_genetic_config();
     let batch_config = genetic_config.batch_config;
     let bots = create_bots(&batch_config.bot_config);
@@ -104,6 +107,8 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
 
     let mut selected_recipes = Vec::new();
     let mut score_threshold = -999.0;
+
+    let mut best_botid = String::new();
 
     let mut scores_file = if botdb {
         let scores_path = match env::current_exe() {
@@ -171,6 +176,9 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
                 gen
             );
             info!("Current best score: {:.3}", score_threshold);
+            if botdb && !best_botid.is_empty() {
+                info!("Current best botid: {}", best_botid);
+            }
             continue;
         }
 
@@ -186,7 +194,10 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
                 if botdb {
                     match BotDB::new().save_bot(&genetic_name, &recipe.recipe, recipe.genetic_score)
                     {
-                        Ok(x) => info!("BotID {}", x),
+                        Ok(x) => {
+                            info!("BotID {}", x);
+                            best_botid = x;
+                        }
                         Err(x) => error!("Error saving bot: {}", x),
                     };
                 } else if let Some(x) = &mut scores_file {

@@ -204,11 +204,11 @@ impl GameObject for Board {
     }
 
     fn from_json(&mut self, value: &serde_json::Value) {
-        let v = match value.get("data") {
-            Some(x) => String::from(x.as_str().unwrap_or("---------")),
-            _ => String::from("---------"),
+        if let Some(x) = value.get("data").and_then(|x| x.as_str()) {
+            self.data = String::from(x);
+        } else {
+            self.data = String::from("---------")
         };
-        self.data = v;
     }
 }
 
