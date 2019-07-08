@@ -234,3 +234,22 @@ impl GamePlayer for GenBot3 {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_roundtrip() {
+        let game_info = GameInfo {
+            input_count: 18,
+            output_count: 9,
+        };
+        let b = GenBot3::new(&game_info);
+        let state1 = b.to_json();
+        let mut b2 = GenBot3::new(&game_info);
+        b2.from_json(&state1);
+
+        assert_eq!(b.to_json(), state1, "State was exported the same twice");
+        assert_eq!(b2.to_json(), state1, "State was imported correctly");
+    }
+}

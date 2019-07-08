@@ -1,4 +1,5 @@
 use crate::bots::genbot3::gbot::GenBot3;
+use crate::bots::nbot1::nbot::NBot1;
 use crate::bots::omnibot::obot::OmniBot;
 use crate::bots::randombot::rbot::RandomBot;
 
@@ -17,6 +18,7 @@ pub fn create_bot(bot_name: &str, game_info: &GameInfo) -> Box<dyn GamePlayer> {
     match bot_name {
         "randombot" => Box::new(RandomBot::new(game_info)),
         "genbot3" => Box::new(GenBot3::new(game_info)),
+        "nbot1" => Box::new(NBot1::new(game_info)),
         "omnibot" => Box::new(OmniBot::new(game_info)),
         "naughts.human" => Box::new(naughts::bots::hbot::HumanBot::new(game_info)),
         "connect4.human" => Box::new(connect4::bots::hbot::HumanConnect4Bot::new(game_info)),

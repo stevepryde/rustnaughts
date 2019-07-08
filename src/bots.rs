@@ -8,3 +8,7 @@ pub mod genbot3 {
 pub mod omnibot {
     pub mod obot;
 }
+pub mod nbot1 {
+    pub mod nbot;
+    pub mod neurons;
+}
