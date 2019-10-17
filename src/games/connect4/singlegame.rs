@@ -58,7 +58,7 @@ impl GameTrait for Connect4Game {
     }
 
     fn get_inputs(&self, identity: char) -> (Vec<f32>, Vec<u32>) {
-        let mut inputs = Vec::new();
+        let mut inputs = Vec::with_capacity(98);
         for row in 0..7 {
             for col in 0..7 {
                 let c = self.world.getat(col, row);

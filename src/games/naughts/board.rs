@@ -185,7 +185,7 @@ impl Board {
 
     /// Get all possible moves for the specified board.
     pub fn get_possible_moves(&self) -> Vec<u32> {
-        let mut moves = Vec::new();
+        let mut moves = Vec::with_capacity(9);
         for index in 0..9 {
             if self.getat(index) == ' ' {
                 moves.push(index as u32);

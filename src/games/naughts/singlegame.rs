@@ -58,7 +58,7 @@ impl GameTrait for NaughtsGame {
     }
 
     fn get_inputs(&self, identity: char) -> (Vec<f32>, Vec<u32>) {
-        let mut inputs = Vec::new();
+        let mut inputs = Vec::with_capacity(18);
         for pos in 0..9 {
             let c = self.board.getat(pos);
             inputs.push(if c == identity { 1.0 } else { 0.0 });

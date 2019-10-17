@@ -19,15 +19,15 @@ impl GenBot3 {
         data.name = String::from("GenBot3");
         let mut obj = GenBot3 {
             player_data: data,
-            nodes: Vec::new(),
-            output_nodes: Vec::new(),
+            nodes: Vec::with_capacity(100),
+            output_nodes: Vec::with_capacity(game_info.output_count as usize),
         };
         obj.create(game_info);
         obj
     }
 
     fn get_recipe(&self) -> String {
-        let mut recipe_blocks = Vec::new();
+        let mut recipe_blocks = Vec::with_capacity(self.nodes.len() + self.output_nodes.len());
         for node in &self.nodes {
             let mut ingredient_blocks = vec![node.name()];
             for input_index in &node.input_indexes {
@@ -50,8 +50,8 @@ impl GenBot3 {
     }
 
     fn create_from_recipe(&mut self, recipe: &str) {
-        self.nodes = Vec::new();
-        self.output_nodes = Vec::new();
+        self.nodes = Vec::with_capacity(100);
+        self.output_nodes = Vec::with_capacity(20);
 
         let mut node_index = 0;
         let recipe_blocks = recipe.split(',');
@@ -81,8 +81,8 @@ impl GenBot3 {
     }
 
     fn create(&mut self, game_info: &GameInfo) {
-        self.nodes = Vec::new();
-        self.output_nodes = Vec::new();
+        self.nodes = Vec::with_capacity(100);
+        self.output_nodes = Vec::with_capacity(game_info.output_count as usize);
 
         for n in 0..game_info.input_count {
             let mut instance = get_node_instance("NODE_INPUT");
@@ -116,7 +116,7 @@ impl GenBot3 {
 
     fn mutate_output_node(&mut self) {
         let output_indexes: Vec<usize> = (0..self.output_nodes.len()).collect();
-        let mut node_indexes = Vec::new();
+        let mut node_indexes = Vec::with_capacity(self.nodes.len());
         for (index, node) in self.nodes.iter().enumerate() {
             if node.input_indexes.is_empty() {
                 continue;
@@ -168,7 +168,7 @@ impl GamePlayer for GenBot3 {
     }
 
     fn process(&mut self, inputs: Vec<f32>, available_moves: &[u32]) -> u32 {
-        let mut outputs = Vec::new();
+        let mut outputs = Vec::with_capacity(inputs.len() + self.nodes.len());
         let start = inputs.len();
         for input_value in inputs {
             outputs.push(input_value > 0.0);
@@ -181,7 +181,7 @@ impl GamePlayer for GenBot3 {
             outputs.push(self.nodes[index].output);
         }
 
-        let mut outputs_final = Vec::new();
+        let mut outputs_final = Vec::with_capacity(self.output_nodes.len());
         for node in &mut self.output_nodes {
             node.update(&outputs.as_slice());
             outputs_final.push(node.output);
@@ -207,7 +207,7 @@ impl GamePlayer for GenBot3 {
             return;
         }
 
-        let mut mutable_node_indexes = Vec::new();
+        let mut mutable_node_indexes = Vec::with_capacity(self.nodes.len());
         for (index, node) in self.nodes.iter().enumerate() {
             if node.input_indexes.is_empty() {
                 continue;
@@ -228,7 +228,7 @@ impl GamePlayer for GenBot3 {
 
         let num_inputs = self.nodes[node_index].num_inputs;
         let indexes: Vec<usize> = (0..node_index).collect();
-        self.nodes[node_index].input_indexes = Vec::new();
+        self.nodes[node_index].input_indexes = Vec::with_capacity(num_inputs as usize);
         for index in indexes.choose_multiple(&mut rand::thread_rng(), num_inputs) {
             self.nodes[node_index].add_input_node(*index);
         }

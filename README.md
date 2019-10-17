@@ -10,7 +10,6 @@ I also have a node.js port (TypeScript) and this Rust version is ~3x faster.
 Naughts is a simple naughts and crosses "engine" including a collection of
 AI bots.
 
-It is intended to be a sandbox for testing AI / machine learning algorithms.
+It is a sandbox for testing AI / machine learning algorithms on turn-based 2-player games.
 
-Only a subset of features are currently supported.
 Refer to the python project for more details: [https://github.com/stevepryde/spnaughts](https://github.com/stevepryde/spnaughts)

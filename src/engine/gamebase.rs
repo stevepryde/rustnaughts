@@ -73,12 +73,12 @@ pub fn run_batch(batch_config: &BatchConfig, log_output: bool, bots: &mut BotLis
     let game = create_game(batch_config.game.as_str());
     let identities = game.get_identities();
 
-    let mut bot_states = Vec::new();
+    let mut bot_states = Vec::with_capacity(bots.len());
     for bot in bots.iter() {
         bot_states.push(bot.to_json());
     }
 
-    let mut wins = HashMap::new();
+    let mut wins = HashMap::with_capacity(bots.len());
     let mut total_score = [0.0 as f32, 0.0 as f32];
     let mut num_draws: u32 = 0;
     for _ in 0..batch_config.batch_size {
@@ -175,9 +175,10 @@ pub fn run_magic_batch(
 
     // Each game state is a tuple containing game state and bot state.
     let initial_state = GameState::new(game.to_json(), bots[other_index].to_json(), [0, 0], 0);
-    let mut game_stack = vec![initial_state];
+    let mut game_stack = Vec::with_capacity(game_info.output_count as usize * 2);
+    game_stack.push(initial_state);
 
-    let mut wins = HashMap::new();
+    let mut wins = HashMap::with_capacity(bots.len());
     let mut total_score = [0.0 as f32, 0.0 as f32];
     let mut num_draws: u32 = 0;
 

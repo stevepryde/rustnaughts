@@ -20,7 +20,7 @@ fn generate_original_samples(
     count: u32,
     recipe: &serde_json::Value,
 ) -> BotListMut {
-    let mut samples_out = Vec::new();
+    let mut samples_out = Vec::with_capacity(count as usize);
     for _ in 0..count {
         let mut bot = create_bot(bot_name, game_info);
         if !recipe.is_null() {
@@ -38,7 +38,7 @@ fn generate_samples(
     input_recipes: &[GeneticRecipe],
     num_samples: u32,
 ) -> BotListMut {
-    let mut samples_out = Vec::new();
+    let mut samples_out = Vec::with_capacity(input_recipes.len() * num_samples as usize);
     for recipe in input_recipes {
         for _ in 0..num_samples {
             let mut bot = create_bot(bot_name, game_info);
@@ -57,7 +57,6 @@ fn generate_samples(
     }
     samples_out
 }
-
 
 pub fn filter_samples(selected_recipes: &mut Vec<GeneticRecipe>, keep_samples: usize) {
     // Sort by score.
@@ -105,7 +104,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
     let other_name = batch_config.bot_config.bot_names[other_index].clone();
     let other_bot_data = bots[other_index].to_json();
 
-    let mut selected_recipes = Vec::new();
+    let mut selected_recipes = Vec::with_capacity(genetic_config.keep_samples as usize);
     let mut score_threshold = -999.0;
 
     let mut best_botid = String::new();
@@ -183,7 +182,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
         }
 
         filter_samples(&mut selected_recipes, genetic_config.keep_samples as usize);
-        let mut selected_scores = Vec::new();
+        let mut selected_scores = Vec::with_capacity(selected_recipes.len());
         for recipe in &selected_recipes {
             if recipe.genetic_score > score_threshold {
                 // Lifting the score more slowly avoids getting stuck due to a random fluke

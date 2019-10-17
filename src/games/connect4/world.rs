@@ -205,7 +205,7 @@ impl World {
     }
 
     pub fn get_possible_moves(&self) -> Vec<u32> {
-        let mut v = Vec::new();
+        let mut v = Vec::with_capacity(7);
         for (i, c) in self.getrow(6).chars().enumerate() {
             if c == ' ' {
                 v.push(i as u32);
