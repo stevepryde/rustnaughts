@@ -1,7 +1,7 @@
 [package]
 name = "naughts"
 version = "0.1.0"
-authors = ["Steve Pryde <spryde81@gmail.com>"]
+authors = ["Steve Pryde <steve@stevepryde.com>"]
 edition = "2018"
 
 [dependencies]
