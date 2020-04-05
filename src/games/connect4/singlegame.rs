@@ -1,4 +1,3 @@
-use crate::engine::botfactory::BotList;
 use crate::engine::gamebase::{GameInfo, GameTrait};
 use crate::engine::gameobject::GameObject;
 use crate::engine::gameresult::{GameResult, GameScore};
@@ -8,12 +7,14 @@ use serde_json;
 
 pub struct Connect4Game {
     world: World,
+    num_turns: [u32; 2],
 }
 
 impl Default for Connect4Game {
     fn default() -> Self {
         Connect4Game {
             world: World::default(),
+            num_turns: [0, 0],
         }
     }
 }
@@ -57,8 +58,9 @@ impl GameTrait for Connect4Game {
         }
     }
 
-    fn get_inputs(&self, identity: char) -> (Vec<f32>, Vec<u32>) {
+    fn get_inputs(&self, index: usize) -> (Vec<f32>, Vec<u32>) {
         let mut inputs = Vec::with_capacity(98);
+        let identity = self.get_identity(index);
         for row in 0..7 {
             for col in 0..7 {
                 let c = self.world.getat(col, row);
@@ -76,9 +78,11 @@ impl GameTrait for Connect4Game {
         (inputs, self.world.get_possible_moves())
     }
 
-    fn update(&mut self, identity: char, output: u32) {
+    fn update(&mut self, index: usize, output: u32) {
         let moves = self.world.get_possible_moves();
         assert!(!moves.is_empty(), "No valid move available: {:?}", moves);
+        let identity = self.get_identity(index);
+        self.num_turns[index] += 1;
 
         let target_move = if moves.len() == 1 {
             moves[0]
@@ -102,18 +106,8 @@ impl GameTrait for Connect4Game {
         self.world.is_ended()
     }
 
-    fn get_result(&self, bots: &BotList, num_turns: [u32; 2]) -> GameResult {
-        let mut show = false;
-        for bot in bots.iter() {
-            if bot.should_show_result() {
-                show = true;
-            }
-        }
-        if show {
-            self.world.show(4);
-        }
-
-        let mut result = GameResult::new();
+    fn get_result(&self) -> GameResult {
+        let mut result = GameResult::new(self.get_identities());
         let outcome = self.world.get_game_state();
         let mut outcomes: [i8; 2] = [0, 0];
         match outcome {
@@ -133,10 +127,8 @@ impl GameTrait for Connect4Game {
             }
         }
 
-        for (i, x) in self.get_identities().iter().enumerate() {
-            result.set_score(*x, self.calculate_score(num_turns[i], outcomes[i]))
-        }
-
+        result.set_score1(self.calculate_score(self.num_turns[0], outcomes[0]));
+        result.set_score2(self.calculate_score(self.num_turns[1], outcomes[1]));
         result
     }
 

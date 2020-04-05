@@ -2,10 +2,10 @@ use log::debug;
 use std::sync::mpsc::channel;
 use threadpool::ThreadPool;
 
-use crate::engine::botfactory::clone_bot;
-use crate::engine::gamebase::{run_batch, GameInfo};
+use crate::engine::botfactory::BotFactory;
+use crate::engine::gamebase::run_batch;
 use crate::engine::gameconfig::BatchConfig;
-use crate::engine::gameplayer::GamePlayer;
+use crate::engine::gamefactory::GameFactory;
 use crate::engine::gameresult::GameScore;
 
 #[derive(Default, Debug)]
@@ -17,24 +17,22 @@ pub struct GeneticRecipe {
 
 pub fn process_batch(
     batch_config: BatchConfig,
-    sample: Box<dyn GamePlayer>,
+    game_factory: GameFactory,
+    mut bot_factory: BotFactory,
+    sample_recipe: serde_json::Value,
     index: u32,
     genetic_index: usize,
-    genetic_identity: char,
-    other_bot: Box<dyn GamePlayer>,
 ) -> GeneticRecipe {
-    let r = sample.to_json();
-    let mut bots = if genetic_index == 0 {
-        [sample, other_bot]
+    bot_factory.set_recipe(genetic_index, sample_recipe.clone());
+    let batch_result = run_batch(&batch_config, false, game_factory, &bot_factory);
+    let genetic_score = if genetic_index == 0 {
+        batch_result.get_score1()
     } else {
-        [other_bot, sample]
+        batch_result.get_score2()
     };
 
-    let batch_result = run_batch(&batch_config, false, &mut bots);
-    let genetic_score = *batch_result.get_score(genetic_identity).unwrap();
-
     GeneticRecipe {
-        recipe: r,
+        recipe: sample_recipe,
         genetic_score,
         index,
     }
@@ -43,7 +41,9 @@ pub fn process_batch(
 pub trait BatchProcessor {
     fn process_batches(
         &self,
-        samples: Vec<Box<dyn GamePlayer>>,
+        game_factory: GameFactory,
+        bot_factory: BotFactory,
+        samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
     );
@@ -52,41 +52,25 @@ pub trait BatchProcessor {
 pub struct MTBatchProcessor {
     pool: ThreadPool,
     batch_config: BatchConfig,
-    game_info: GameInfo,
-    other_bot_name: String,
-    other_bot_data: serde_json::Value,
     genetic_index: usize,
-    genetic_identity: char,
 }
 
 impl MTBatchProcessor {
-    pub fn new(
-        num_threads: usize,
-        batch_config: BatchConfig,
-        game_info: GameInfo,
-        other_bot_name: String,
-        other_bot_data: serde_json::Value,
-        genetic_index: usize,
-        genetic_identity: char,
-    ) -> Self {
-
+    pub fn new(num_threads: usize, batch_config: BatchConfig, genetic_index: usize) -> Self {
         MTBatchProcessor {
             pool: ThreadPool::new(num_threads),
             batch_config,
-            game_info,
-            other_bot_name,
-            other_bot_data,
             genetic_index,
-            genetic_identity,
         }
     }
-
 }
 
 impl BatchProcessor for MTBatchProcessor {
     fn process_batches(
         &self,
-        samples: Vec<Box<dyn GamePlayer>>,
+        game_factory: GameFactory,
+        bot_factory: BotFactory,
+        samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
     ) {
@@ -98,23 +82,18 @@ impl BatchProcessor for MTBatchProcessor {
             // Each thread wants exclusive access to everything. Easiest way is to clone.
             let sample = samples.pop().expect("Error popping sample");
             let thread_batch_config = self.batch_config.clone();
-            let thread_other_bot = clone_bot(
-                self.other_bot_name.as_str(),
-                &self.game_info,
-                &self.other_bot_data,
-            );
             let genetic_index = self.genetic_index;
-            let genetic_identity = self.genetic_identity;
+            let bot_factory_clone = bot_factory.clone();
 
             let tx = tx.clone();
             self.pool.execute(move || {
                 let item = process_batch(
                     thread_batch_config,
+                    game_factory,
+                    bot_factory_clone,
                     sample,
                     index,
                     genetic_index,
-                    genetic_identity,
-                    thread_other_bot,
                 );
                 tx.send(item).expect("Error sending batch result");
             });
@@ -137,42 +116,26 @@ impl BatchProcessor for MTBatchProcessor {
     }
 }
 
-
 pub struct STBatchProcessor {
     batch_config: BatchConfig,
-    game_info: GameInfo,
-    other_bot_name: String,
-    other_bot_data: serde_json::Value,
     genetic_index: usize,
-    genetic_identity: char,
 }
 
 impl STBatchProcessor {
-    pub fn new(
-        batch_config: BatchConfig,
-        game_info: GameInfo,
-        other_bot_name: String,
-        other_bot_data: serde_json::Value,
-        genetic_index: usize,
-        genetic_identity: char,
-    ) -> Self {
-
+    pub fn new(batch_config: BatchConfig, genetic_index: usize) -> Self {
         STBatchProcessor {
             batch_config,
-            game_info,
-            other_bot_name,
-            other_bot_data,
             genetic_index,
-            genetic_identity,
         }
     }
-
 }
 
 impl BatchProcessor for STBatchProcessor {
     fn process_batches(
         &self,
-        samples: Vec<Box<dyn GamePlayer>>,
+        game_factory: GameFactory,
+        bot_factory: BotFactory,
+        samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
     ) {
@@ -181,20 +144,15 @@ impl BatchProcessor for STBatchProcessor {
         while !samples.is_empty() {
             // Each thread wants exclusive access to everything. Easiest way is to clone.
             let sample = samples.pop().expect("Error popping sample");
-            let other_bot = clone_bot(
-                self.other_bot_name.as_str(),
-                &self.game_info,
-                &self.other_bot_data,
-            );
             let batch_config = self.batch_config.clone();
 
             let item = process_batch(
                 batch_config,
+                game_factory,
+                bot_factory.clone(),
                 sample,
                 index,
                 self.genetic_index,
-                self.genetic_identity,
-                other_bot,
             );
 
             let mut win = String::new();

@@ -1,21 +1,14 @@
-
-use log::info;
-use std::error::Error;
-use crate::engine::botfactory::create_bots;
+use crate::engine::botfactory::BotFactory;
 use crate::engine::gamebase::run_batch;
 use crate::engine::gameconfig::GameConfig;
+use crate::engine::gamefactory::create_game_factory;
+use std::error::Error;
 
-pub fn batch_runner(config: GameConfig) -> Result<(), Box<Error>> {
+pub fn batch_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
     let batch_config = config.get_batch_config();
-    let mut bots = create_bots(&batch_config.bot_config);
-    if !config.botrecipe.is_null() {
-        for bot in &mut bots {
-            if bot.is_genetic() {
-                info!("Loaded recipe from BotDB");
-                bot.from_json(&config.botrecipe)
-            }
-        }
-    }
-    run_batch(&batch_config, true, &mut bots);
+    let game_factory = create_game_factory(&config.game);
+    let game = game_factory();
+    let bot_factory = BotFactory::new(game.get_game_info(), config.get_bot_config());
+    run_batch(&batch_config, true, game_factory, &bot_factory);
     Ok(())
 }

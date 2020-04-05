@@ -1,19 +1,18 @@
-use crate::engine::botfactory::BotList;
 use crate::engine::gamebase::{GameInfo, GameTrait};
 use crate::engine::gameobject::GameObject;
 use crate::engine::gameresult::{GameResult, GameScore};
 use crate::games::naughts::board::Board;
 
-use serde_json;
-
 pub struct NaughtsGame {
     board: Board,
+    num_turns: [u32; 2],
 }
 
 impl Default for NaughtsGame {
     fn default() -> Self {
         NaughtsGame {
             board: Board::default(),
+            num_turns: [0, 0],
         }
     }
 }
@@ -57,8 +56,9 @@ impl GameTrait for NaughtsGame {
         }
     }
 
-    fn get_inputs(&self, identity: char) -> (Vec<f32>, Vec<u32>) {
+    fn get_inputs(&self, index: usize) -> (Vec<f32>, Vec<u32>) {
         let mut inputs = Vec::with_capacity(18);
+        let identity = self.get_identity(index);
         for pos in 0..9 {
             let c = self.board.getat(pos);
             inputs.push(if c == identity { 1.0 } else { 0.0 });
@@ -72,9 +72,11 @@ impl GameTrait for NaughtsGame {
         (inputs, self.board.get_possible_moves())
     }
 
-    fn update(&mut self, identity: char, output: u32) {
+    fn update(&mut self, index: usize, output: u32) {
         let moves = self.board.get_possible_moves();
         assert!(!moves.is_empty(), "No valid move available: {:?}", moves);
+        let identity = self.get_identity(index);
+        self.num_turns[index] += 1;
 
         let target_move = if moves.len() == 1 {
             moves[0]
@@ -98,18 +100,8 @@ impl GameTrait for NaughtsGame {
         self.board.is_ended()
     }
 
-    fn get_result(&self, bots: &BotList, num_turns: [u32; 2]) -> GameResult {
-        let mut show = false;
-        for bot in bots.iter() {
-            if bot.should_show_result() {
-                show = true;
-            }
-        }
-        if show {
-            self.board.show(4);
-        }
-
-        let mut result = GameResult::new();
+    fn get_result(&self) -> GameResult {
+        let mut result = GameResult::new(self.get_identities());
         let outcome = self.board.get_game_state();
         let mut outcomes: [i8; 2] = [0, 0];
         match outcome {
@@ -129,10 +121,8 @@ impl GameTrait for NaughtsGame {
             }
         }
 
-        for (i, x) in self.get_identities().iter().enumerate() {
-            result.set_score(*x, self.calculate_score(num_turns[i], outcomes[i]))
-        }
-
+        result.set_score1(self.calculate_score(self.num_turns[0], outcomes[0]));
+        result.set_score2(self.calculate_score(self.num_turns[1], outcomes[1]));
         result
     }
 

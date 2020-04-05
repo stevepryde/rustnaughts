@@ -1,5 +1,6 @@
-use std::cmp::Ordering;
-use std::collections::HashMap;
+use serde::export::Formatter;
+use std::fmt;
+
 pub type GameScore = f32;
 pub static NULL_SCORE: GameScore = -999.0;
 
@@ -20,57 +21,52 @@ impl Default for GameStatus {
 #[derive(Default)]
 /// A single game result.
 pub struct GameResult {
-    scores: HashMap<char, GameScore>,
+    scores: [GameScore; 2],
+    identities: [char; 2],
     status: GameStatus,
-    winner: Option<char>,
 }
 
 impl GameResult {
     /// Create a new GameResult.
-    pub fn new() -> Self {
+    pub fn new(identities: [char; 2]) -> Self {
         GameResult {
-            scores: HashMap::new(),
+            scores: [0.0, 0.0],
+            identities,
             status: GameStatus::Open,
-            winner: None,
         }
     }
 
     /// Set the score.
-    pub fn set_score(&mut self, identity: char, score: GameScore) {
-        self.scores.insert(identity, score);
+    pub fn set_score1(&mut self, score: GameScore) {
+        self.scores[0] = score
+    }
+
+    /// Set the score.
+    pub fn set_score2(&mut self, score: GameScore) {
+        self.scores[1] = score
     }
 
     /// Get the score.
-    pub fn get_score(&self, identity: char) -> Option<&GameScore> {
-        self.scores.get(&identity)
+    pub fn get_score1(&self) -> GameScore {
+        self.scores[0]
     }
 
-    /// Get the winner's identity.
-    pub fn derive_winner(&mut self) -> char {
-        if self.winner.is_none() {
-            self.winner = Some(self.get_winner())
-        }
-
-        self.winner.unwrap()
+    pub fn get_score2(&self) -> GameScore {
+        self.scores[1]
     }
 
-    pub fn get_winner(&self) -> char {
-        if self.winner.is_none() {
-            assert!(!self.scores.is_empty(), "BUG: No winner - scores set yet!");
-
-            match self
-                .scores
-                .iter()
-                .max_by(|(_, v), (_, v2)| match v.partial_cmp(&v2) {
-                    Some(x) => x,
-                    None => Ordering::Less,
-                }) {
-                Some((k, _)) => *k,
-                _ => panic!("No scores!"),
-            }
+    pub fn get_winner(&self) -> Option<usize> {
+        if self.scores[0] > self.scores[1] {
+            Some(0)
+        } else if self.scores[1] > self.scores[0] {
+            Some(1)
         } else {
-            self.winner.unwrap()
+            None
         }
+    }
+
+    pub fn get_winner_identity(&self) -> Option<char> {
+        self.get_winner().map(|x| self.identities[x])
     }
 
     /// Set game status to Win.
@@ -111,39 +107,19 @@ impl GameResult {
             _ => false,
         }
     }
-
-    pub fn to_string(&self) -> String {
-        match self.status {
-            GameStatus::Open => String::from("Game in progress"),
-            GameStatus::Tie => String::from("RESULT: Tie"),
-            GameStatus::Win => format!("RESULT: {} wins!", self.get_winner()),
-            GameStatus::Batch => format!("BATCH RESULT: {:?}", self.scores),
-        }
-    }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    #[test]
-    fn test_result() {
-        let mut r = GameResult::new();
-        r.set_score('X', 1.0);
-        r.set_score('O', 1.1);
-        assert_eq!(r.derive_winner(), 'O');
+impl fmt::Display for GameResult {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self.status {
+            GameStatus::Open => write!(f, "Game in progress"),
+            GameStatus::Tie => write!(f, "RESULT: Tie"),
+            GameStatus::Win => match self.get_winner_identity() {
+                Some(x) => write!(f, "RESULT: {} wins!", x),
+                None => write!(f, "RESULT: Tie"),
+            },
 
-        // Once set, the winner does not change.
-        r.set_score('A', 2.0);
-        assert_eq!(r.derive_winner(), 'O');
-
-        assert!(!r.is_win());
-        r.set_win();
-        assert!(r.is_win());
-
-        r = GameResult::new();
-        r.set_score('A', 0.0);
-        r.set_score('B', 5.1);
-        r.set_score('C', 3.2);
-        assert_eq!(r.derive_winner(), 'B');
+            GameStatus::Batch => write!(f, "BATCH RESULT: {:?}", self.scores),
+        }
     }
 }

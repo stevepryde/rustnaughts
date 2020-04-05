@@ -1,0 +1,28 @@
+Basically the idea is to kind of turn the genetic runner from breadth-first to depth-first.
+You have a stack containing the current best recipes and their score, plus a counter that starts at 0.
+
+Each thread will:
+- Get next bot from the top of the stack as follows:
+  - Increment count of top bot
+  - if count > X (whatever the number of tries we want is), remove it from the stack and try the next one
+- Create a mutant derivative of the bot
+- Run the batch.
+- If the score is higher, add new mutant to the top of the stack.
+- If it's an overall high score - add it to the keep list (do we want to track the top 10?)
+
+
+Later expansion:
+- When things are removed from the stack, add them to the bottom of a second stack.
+- The second stack will end up being the new stack to run once all stack items have reached X count.
+- order should also be the same if my thinking is correct.
+- Now we can continue on with the new stack and reset all counts back to 0.
+
+
+-- This should find the best bots sooner, while falling back to searching further down the tree
+   to hopefully prevent getting stuck on local maxima.
+-- If we get stuck close to the bottom (maybe the initial bots need some identifier?) then we
+   could generate more random seeds...
+
+
+-- With some tweaks this bot could run indefinitely which would be great for the online
+   one.

@@ -6,53 +6,36 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 use crate::engine::botdb::BotDB;
-use crate::engine::botfactory::{create_bot, create_bots, BotListMut};
-use crate::engine::gamebase::GameInfo;
+use crate::engine::botfactory::{BotFactory, BotType};
 use crate::engine::gameconfig::GameConfig;
-use crate::engine::gamefactory::create_game;
-use crate::engine::runners::genetic::processor::{
-    BatchProcessor, GeneticRecipe, MTBatchProcessor, STBatchProcessor,
-};
+use crate::engine::gamefactory::create_game_factory;
+use crate::engine::runners::genetic::processor::{BatchProcessor, GeneticRecipe, MTBatchProcessor};
 
-fn generate_original_samples(
-    bot_name: &str,
-    game_info: &GameInfo,
-    count: u32,
-    recipe: &serde_json::Value,
-) -> BotListMut {
+fn generate_original_samples(count: u32, recipe: &serde_json::Value) -> Vec<serde_json::Value> {
     let mut samples_out = Vec::with_capacity(count as usize);
     for _ in 0..count {
-        let mut bot = create_bot(bot_name, game_info);
-        if !recipe.is_null() {
-            bot.from_json(recipe);
-        }
-        samples_out.push(bot);
+        samples_out.push(recipe.clone());
     }
 
     samples_out
 }
 
 fn generate_samples(
-    bot_name: &str,
-    game_info: &GameInfo,
+    bot_type: &BotType,
+    bot_factory: &BotFactory,
     input_recipes: &[GeneticRecipe],
     num_samples: u32,
-) -> BotListMut {
+) -> Vec<serde_json::Value> {
     let mut samples_out = Vec::with_capacity(input_recipes.len() * num_samples as usize);
     for recipe in input_recipes {
         for _ in 0..num_samples {
-            let mut bot = create_bot(bot_name, game_info);
-            bot.from_json(&recipe.recipe);
-            assert_eq!(
-                bot.to_json(),
-                recipe.recipe,
-                "New sample not identical to old sample!"
-            );
+            let mut bot = bot_factory.create_bot_with_custom_recipe(bot_type, &recipe.recipe);
             bot.mutate();
-            if bot.to_json() == recipe.recipe {
+            let recipe_out = bot.to_json();
+            if recipe_out == recipe.recipe {
                 warn!("Sample did not mutate");
             }
-            samples_out.push(bot);
+            samples_out.push(recipe_out);
         }
     }
     samples_out
@@ -69,7 +52,7 @@ pub fn filter_samples(selected_recipes: &mut Vec<GeneticRecipe>, keep_samples: u
     selected_recipes.drain(keep..);
 }
 
-pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
+pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
     let botdb = config.botdb;
     let botrecipe = &config.botrecipe;
     if !botrecipe.is_null() {
@@ -77,10 +60,11 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
     }
     let genetic_config = config.get_genetic_config();
     let batch_config = genetic_config.batch_config;
-    let bots = create_bots(&batch_config.bot_config);
-    let game = create_game(genetic_config.game.as_str());
-    let game_info = game.get_game_info();
-    let identities = game.get_identities();
+    let game_factory = create_game_factory(&genetic_config.game);
+    let game = game_factory();
+    let bot_factory = BotFactory::new(game.get_game_info(), config.get_bot_config());
+    let (bot1, bot2) = bot_factory.create_bots();
+    let bots = vec![bot1, bot2];
     let num_samples = genetic_config.num_samples;
 
     let genetic_index = if bots[0].is_genetic() {
@@ -98,18 +82,15 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
         1
     };
 
-    let genetic_name = batch_config.bot_config.bot_names[genetic_index].as_str();
-    let genetic_identity = identities[genetic_index];
-    let other_index = if genetic_index == 1 { 0 } else { 1 };
-    let other_name = batch_config.bot_config.bot_names[other_index].clone();
-    let other_bot_data = bots[other_index].to_json();
+    let genetic_name = &batch_config.bot_config.bot_names[genetic_index].as_str();
+    let genetic_type = &batch_config.bot_config.bot_types[genetic_index];
 
     let mut selected_recipes = Vec::with_capacity(genetic_config.keep_samples as usize);
     let mut score_threshold = -999.0;
 
     let mut best_botid = String::new();
 
-    let mut scores_file = if botdb {
+    let mut scores_file = {
         let scores_path = match env::current_exe() {
             Ok(x) => {
                 let mut p = x.parent().expect("Error getting parent dir").to_path_buf();
@@ -125,50 +106,32 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<Error>> {
                 .open(scores_path)
                 .expect("Error opening scores.csv"),
         )
-    } else {
-        None
     };
 
-    let processor = MTBatchProcessor::new(
-        6,
-        batch_config.clone(),
-        game_info.clone(),
-        other_name.clone(),
-        other_bot_data.clone(),
-        genetic_index,
-        genetic_identity,
-    );
-
-    // let processor = STBatchProcessor::new(
-    //     batch_config.clone(),
-    //     game_info.clone(),
-    //     other_name.clone(),
-    //     other_bot_data.clone(),
-    //     genetic_index,
-    //     genetic_identity,
-    // );
+    let processor = MTBatchProcessor::new(6, batch_config.clone(), genetic_index);
 
     for gen in 0..genetic_config.num_generations {
         info!("--------------------------");
         info!("Generation {}:", gen);
 
         let mut new_samples = if selected_recipes.is_empty() {
-            generate_original_samples(genetic_name, &game_info, num_samples, botrecipe)
+            generate_original_samples(num_samples, botrecipe)
         } else {
-            generate_samples(genetic_name, &game_info, &selected_recipes, num_samples)
+            generate_samples(genetic_type, &bot_factory, &selected_recipes, num_samples)
         };
 
         if genetic_config.wild_samples > 0 {
-            new_samples.append(&mut generate_original_samples(
-                genetic_name,
-                &game_info,
-                num_samples,
-                botrecipe,
-            ));
+            new_samples.append(&mut generate_original_samples(num_samples, botrecipe));
         }
 
         let recipe_count = selected_recipes.len();
-        processor.process_batches(new_samples, &mut selected_recipes, score_threshold);
+        processor.process_batches(
+            game_factory,
+            bot_factory.clone(),
+            new_samples,
+            &mut selected_recipes,
+            score_threshold,
+        );
         if selected_recipes.len() == recipe_count {
             info!(
                 "Generation {} :: No improvement - will generate more samples",
