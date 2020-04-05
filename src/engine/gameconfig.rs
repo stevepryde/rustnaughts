@@ -1,11 +1,12 @@
 use argparse::{ArgumentParser, Store, StoreTrue};
-use serde_json;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
 use crate::engine::botdb::BotDB;
+use crate::engine::botfactory::BotType;
+use crate::engine::gamefactory::GameType;
 use crate::engine::log;
 
 /// Exit with the specified error message.
@@ -14,37 +15,34 @@ fn exit_with_error(err: &str) {
     exit(1);
 }
 
+#[derive(Debug, Clone)]
+pub enum RunMode {
+    Single,
+    Batch,
+    Genetic,
+}
 
 /// The config required to construct bots.
-#[derive(Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct BotConfig {
     pub bot_names: [String; 2],
-    pub game: String,
+    pub bot_types: [BotType; 2],
+    pub game: GameType,
+    pub recipe: serde_json::Value,
 }
 
 /// The config required to process one batch.
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct BatchConfig {
     pub batch_size: u32,
-    pub game: String,
+    pub game: GameType,
     pub magic: bool,
     pub bot_config: BotConfig,
 }
 
-impl Default for BatchConfig {
-    fn default() -> Self {
-        BatchConfig {
-            batch_size: 1,
-            game: String::new(),
-            magic: false,
-            bot_config: BotConfig::default(),
-        }
-    }
-}
-
 /// The config required for genetic runner.
 pub struct GeneticConfig {
-    pub game: String,
+    pub game: GameType,
     pub num_generations: u32,
     pub num_samples: u32,
     pub keep_samples: u32,
@@ -52,28 +50,15 @@ pub struct GeneticConfig {
     pub batch_config: BatchConfig,
 }
 
-impl Default for GeneticConfig {
-    fn default() -> Self {
-        GeneticConfig {
-            game: String::new(),
-            num_generations: 0,
-            num_samples: 0,
-            keep_samples: 0,
-            wild_samples: 0,
-            batch_config: BatchConfig::default(),
-        }
-    }
-}
-
 pub struct GameConfig {
     pub path: PathBuf,
-    pub game: String,
+    pub game: GameType,
     pub silent: bool,
     pub console_logging: bool,
     pub batch_mode: bool,
     pub genetic_mode: bool,
     pub no_batch_summary: bool,
-    pub run_mode: String,
+    pub run_mode: RunMode,
     pub botdb: bool,
     pub botrecipe: serde_json::Value,
     log_base_dir: PathBuf,
@@ -97,13 +82,13 @@ impl GameConfig {
 
         GameConfig {
             path,
-            game: String::new(),
+            game: GameType::Unknown,
             silent: false,
             console_logging: false,
             batch_mode: false,
             genetic_mode: false,
             no_batch_summary: false,
-            run_mode: String::new(),
+            run_mode: RunMode::Single,
             log_base_dir,
             data_base_dir,
             bot_names: [String::new(), String::new()],
@@ -125,11 +110,11 @@ impl GameConfig {
         self.init_logging().expect("Error setting up logging");
 
         if self.genetic_mode {
-            self.run_mode = String::from("GENETIC");
+            self.run_mode = RunMode::Genetic;
         } else if self.batch_mode {
-            self.run_mode = String::from("BATCH");
+            self.run_mode = RunMode::Batch;
         } else {
-            self.run_mode = String::from("SINGLE");
+            self.run_mode = RunMode::Single;
         }
     }
 
@@ -139,6 +124,7 @@ impl GameConfig {
         let mut bot1 = String::new();
         let mut bot2 = String::new();
         let mut botid = String::new();
+        let mut recipefile = String::new();
 
         {
             let mut ap = ArgumentParser::new();
@@ -192,18 +178,32 @@ impl GameConfig {
                 StoreTrue,
                 "Use BotDB to store recipes",
             );
+            ap.refer(&mut recipefile).add_option(
+                &["--botrecipe"],
+                Store,
+                "Filename to load recipe from",
+            );
             ap.parse_args_or_exit();
         }
 
         self.bot_names[0] = bot1;
         self.bot_names[1] = bot2;
-        self.game = game;
+        self.game = GameType::from(game);
 
         if !botid.is_empty() {
             match BotDB::new().load_bot(botid.as_str()) {
                 Ok(x) => self.botrecipe = x,
                 Err(x) => exit_with_error(format!("Failed to load bot: {}", x).as_str()),
             };
+        } else if !recipefile.is_empty() {
+            let recipe_str =
+                fs::read_to_string(Path::new(&recipefile)).expect("Error reading botrecipe file");
+            if recipe_str.starts_with('{') {
+                // Parse JSON.
+                self.botrecipe = serde_json::from_str(&recipe_str).expect("Invalid JSON format");
+            } else {
+                self.botrecipe = serde_json::json!({ "recipe": recipe_str });
+            }
         }
     }
 
@@ -289,8 +289,13 @@ impl GameConfig {
     /// Get the bot config.
     pub fn get_bot_config(&self) -> BotConfig {
         BotConfig {
-            bot_names: self.bot_names.clone(),
+            bot_names: [self.bot_names[0].clone(), self.bot_names[1].clone()],
+            bot_types: [
+                BotType::from(self.bot_names[0].clone()),
+                BotType::from(self.bot_names[1].clone()),
+            ],
             game: self.game.clone(),
+            recipe: self.botrecipe.clone(),
         }
     }
 
