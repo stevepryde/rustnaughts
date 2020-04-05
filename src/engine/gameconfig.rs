@@ -14,7 +14,6 @@ fn exit_with_error(err: &str) {
     exit(1);
 }
 
-
 /// The config required to construct bots.
 #[derive(Default, Clone)]
 pub struct BotConfig {
@@ -139,6 +138,7 @@ impl GameConfig {
         let mut bot1 = String::new();
         let mut bot2 = String::new();
         let mut botid = String::new();
+        let mut recipefile = String::new();
 
         {
             let mut ap = ArgumentParser::new();
@@ -192,6 +192,11 @@ impl GameConfig {
                 StoreTrue,
                 "Use BotDB to store recipes",
             );
+            ap.refer(&mut recipefile).add_option(
+                &["--botrecipe"],
+                Store,
+                "Filename to load recipe from",
+            );
             ap.parse_args_or_exit();
         }
 
@@ -204,6 +209,15 @@ impl GameConfig {
                 Ok(x) => self.botrecipe = x,
                 Err(x) => exit_with_error(format!("Failed to load bot: {}", x).as_str()),
             };
+        } else if !recipefile.is_empty() {
+            let recipe_str =
+                fs::read_to_string(Path::new(&recipefile)).expect("Error reading botrecipe file");
+            if recipe_str.starts_with('{') {
+                // Parse JSON.
+                self.botrecipe = serde_json::from_str(&recipe_str).expect("Invalid JSON format");
+            } else {
+                self.botrecipe = serde_json::json!({ "recipe": recipe_str });
+            }
         }
     }
 
