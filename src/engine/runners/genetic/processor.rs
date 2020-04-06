@@ -16,15 +16,15 @@ pub struct GeneticRecipe {
 }
 
 pub fn process_batch(
-    batch_config: BatchConfig,
+    batch_config: &BatchConfig,
     game_factory: GameFactory,
-    mut bot_factory: BotFactory,
+    bot_factory: &mut BotFactory,
     sample_recipe: serde_json::Value,
     index: u32,
     genetic_index: usize,
 ) -> GeneticRecipe {
     bot_factory.set_recipe(genetic_index, sample_recipe.clone());
-    let batch_result = run_batch(&batch_config, false, game_factory, &bot_factory);
+    let batch_result = run_batch(batch_config, false, game_factory, &bot_factory);
     let genetic_score = if genetic_index == 0 {
         batch_result.get_score1()
     } else {
@@ -42,7 +42,7 @@ pub trait BatchProcessor {
     fn process_batches(
         &self,
         game_factory: GameFactory,
-        bot_factory: BotFactory,
+        bot_factory: &mut BotFactory,
         samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
@@ -69,7 +69,7 @@ impl BatchProcessor for MTBatchProcessor {
     fn process_batches(
         &self,
         game_factory: GameFactory,
-        bot_factory: BotFactory,
+        bot_factory: &mut BotFactory,
         samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
@@ -83,14 +83,14 @@ impl BatchProcessor for MTBatchProcessor {
             let sample = samples.pop().expect("Error popping sample");
             let thread_batch_config = self.batch_config.clone();
             let genetic_index = self.genetic_index;
-            let bot_factory_clone = bot_factory.clone();
+            let mut bot_factory_clone = bot_factory.clone();
 
             let tx = tx.clone();
             self.pool.execute(move || {
                 let item = process_batch(
-                    thread_batch_config,
+                    &thread_batch_config,
                     game_factory,
-                    bot_factory_clone,
+                    &mut bot_factory_clone,
                     sample,
                     index,
                     genetic_index,
@@ -134,7 +134,7 @@ impl BatchProcessor for STBatchProcessor {
     fn process_batches(
         &self,
         game_factory: GameFactory,
-        bot_factory: BotFactory,
+        bot_factory: &mut BotFactory,
         samples: Vec<serde_json::Value>,
         selected_recipes: &mut Vec<GeneticRecipe>,
         score_threshold: GameScore,
@@ -147,9 +147,9 @@ impl BatchProcessor for STBatchProcessor {
             let batch_config = self.batch_config.clone();
 
             let item = process_batch(
-                batch_config,
+                &batch_config,
                 game_factory,
-                bot_factory.clone(),
+                bot_factory,
                 sample,
                 index,
                 self.genetic_index,

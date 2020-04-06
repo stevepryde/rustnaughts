@@ -79,7 +79,10 @@ fn main() {
     let runner = match config.run_mode {
         RunMode::Single => single_runner,
         RunMode::Batch => batch_runner,
-        RunMode::Genetic => genetic_runner,
+        RunMode::Genetic => {
+            //genetic_runner
+            gen2_runner
+        }
     };
 
     let now = Instant::now();

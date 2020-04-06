@@ -62,7 +62,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
     let batch_config = genetic_config.batch_config;
     let game_factory = create_game_factory(&genetic_config.game);
     let game = game_factory();
-    let bot_factory = BotFactory::new(game.get_game_info(), config.get_bot_config());
+    let mut bot_factory = BotFactory::new(game.get_game_info(), config.get_bot_config());
     let (bot1, bot2) = bot_factory.create_bots();
     let bots = vec![bot1, bot2];
     let num_samples = genetic_config.num_samples;
@@ -127,7 +127,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
         let recipe_count = selected_recipes.len();
         processor.process_batches(
             game_factory,
-            bot_factory.clone(),
+            &mut bot_factory,
             new_samples,
             &mut selected_recipes,
             score_threshold,

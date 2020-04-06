@@ -67,6 +67,7 @@ pub struct BotFactory {
     game_info: GameInfo,
     bot_config: BotConfig,
     recipes: [serde_json::Value; 2],
+    genetic_index: Option<usize>,
 }
 
 impl BotFactory {
@@ -77,11 +78,24 @@ impl BotFactory {
             game_info,
             bot_config,
             recipes: [recipe1, recipe2],
+            genetic_index: None,
         }
     }
 
     pub fn set_recipe(&mut self, index: usize, recipe: serde_json::Value) {
         self.recipes[index] = recipe;
+    }
+
+    pub fn set_genetic_index(&mut self, index: usize) {
+        self.genetic_index = Some(index);
+    }
+
+    pub fn set_genetic_recipe(&mut self, recipe: serde_json::Value) {
+        if let Some(x) = self.genetic_index {
+            self.set_recipe(x, recipe);
+        } else {
+            panic!("Attempted to set genetic recipe before index");
+        }
     }
 
     pub fn create_bot(&self, bot_type: &BotType) -> DynBot {
@@ -117,6 +131,13 @@ impl BotFactory {
             bot.from_json(&recipe);
         }
         bot
+    }
+
+    pub fn create_genetic_bot_with_custom_recipe(&self, recipe: &serde_json::Value) -> DynBot {
+        match self.genetic_index {
+            Some(x) => self.create_bot_with_custom_recipe(&self.bot_config.bot_types[x], recipe),
+            None => panic!("Can't create genetic bot before setting genetic index!"),
+        }
     }
 
     pub fn create_bots(&self) -> (DynBot, DynBot) {

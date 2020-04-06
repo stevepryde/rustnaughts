@@ -35,8 +35,8 @@ pub fn run_one_game(
     let identities = game.get_identities();
     let (mut bot1, mut bot2) = bot_factory.create_bots();
 
-    bot1.setup(identities[1], identities[0]);
-    bot2.setup(identities[0], identities[1]);
+    bot1.setup(identities[0], identities[1]);
+    bot2.setup(identities[1], identities[0]);
 
     let mut bot_index = 0;
     while !game.is_ended() {
