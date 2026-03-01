@@ -28,7 +28,7 @@ impl Connect4Game {
         let score: f32 = 25.0 - num_turns as f32;
         let multiplier: f32 = match outcome {
             x if x > 0 => 1.0,
-            x if x < 0 => -10.0,
+            x if x < 0 => -1.0,
             _ => 0.0,
         };
 

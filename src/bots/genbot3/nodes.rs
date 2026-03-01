@@ -134,7 +134,7 @@ pub fn get_node_instance(class_name: &str) -> Node {
         "NODE_NOR" => Node::new_typed(NodeType::Nor),
         "NODE_XNOR" => Node::new_typed(NodeType::Xnor),
         "NODE_OUTPUT" => panic!("Can't use get_node_instance() on output node"),
-        _ => panic!(format!("Invalid class name: {}", class_name)),
+        _ => panic!("Invalid class name: {}", class_name),
     }
 }
 

@@ -19,9 +19,9 @@ impl Neuron {
         let mut rng = rand::thread_rng();
         Neuron {
             input_weights: (0..num_parent_nodes)
-                .map(|_| sigmoid(rng.gen_range(-2.0, 2.0)))
+                .map(|_| rng.gen_range(-1.0, 1.0))
                 .collect::<Vec<f32>>(),
-            bias: sigmoid(rng.gen_range(-2.0, 2.0)),
+            bias: rng.gen_range(-1.0, 1.0),
         }
     }
 
@@ -32,7 +32,7 @@ impl Neuron {
             .map(|(x, y)| x * y)
             .sum();
 
-        self.bias + weight_sum
+        sigmoid(self.bias + weight_sum)
     }
 }
 

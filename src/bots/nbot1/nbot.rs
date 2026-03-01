@@ -1,4 +1,4 @@
-use crate::bots::nbot1::neurons::{sigmoid, NeuronLayer};
+use crate::bots::nbot1::neurons::NeuronLayer;
 
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameobject::GameObject;
@@ -88,7 +88,7 @@ impl GamePlayer for NBot1 {
 
         // Now sort moves according to the outputs.
         let mut best_move = available_moves[0];
-        let mut best_output = 0.0;
+        let mut best_output = f32::NEG_INFINITY;
         for m in available_moves {
             if outputs[*m as usize] > best_output {
                 best_move = *m;
@@ -112,11 +112,11 @@ impl GamePlayer for NBot1 {
             );
             let weight = self.layers[layer_index].nodes[node_index].input_weights[i];
             self.layers[layer_index].nodes[node_index].input_weights[i] =
-                sigmoid(weight + rng.gen_range(-2.0, 2.0));
+                weight + rng.gen_range(-0.5, 0.5);
         } else {
             let bias = self.layers[layer_index].nodes[node_index].bias;
             self.layers[layer_index].nodes[node_index].bias =
-                sigmoid(bias + rng.gen_range(-2.0, 2.0));
+                bias + rng.gen_range(-0.5, 0.5);
         }
     }
 }

@@ -4,6 +4,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 use std::process::exit;
 
+#[cfg(feature = "mongodb")]
 use crate::engine::botdb::BotDB;
 use crate::engine::botfactory::BotType;
 use crate::engine::gamefactory::GameType;
@@ -190,12 +191,18 @@ impl GameConfig {
         self.bot_names[1] = bot2;
         self.game = GameType::from(game);
 
+        #[cfg(feature = "mongodb")]
         if !botid.is_empty() {
             match BotDB::new().load_bot(botid.as_str()) {
                 Ok(x) => self.botrecipe = x,
                 Err(x) => exit_with_error(format!("Failed to load bot: {}", x).as_str()),
             };
-        } else if !recipefile.is_empty() {
+        }
+        #[cfg(not(feature = "mongodb"))]
+        if !botid.is_empty() {
+            exit_with_error("--botid requires the 'mongodb' feature (cargo build --features mongodb)");
+        }
+        if !recipefile.is_empty() {
             let recipe_str =
                 fs::read_to_string(Path::new(&recipefile)).expect("Error reading botrecipe file");
             if recipe_str.starts_with('{') {

@@ -90,7 +90,7 @@ impl GenBot3 {
             self.nodes.push(instance);
         }
 
-        let num_nodes = 100;
+        let num_nodes = (game_info.input_count as usize) * 5;
         let mut next_index = self.nodes.len();
         for _ in 0..num_nodes {
             let mut instance = get_random_node_instance();
@@ -103,7 +103,7 @@ impl GenBot3 {
             next_index += 1;
         }
 
-        let num_inputs = 20;
+        let num_inputs = std::cmp::max(20, self.nodes.len() / 5);
         for _ in 0..game_info.output_count {
             let mut instance = NodeOutput::default();
             let indexes: Vec<usize> = (0..self.nodes.len()).collect();

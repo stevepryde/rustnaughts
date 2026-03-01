@@ -1,10 +1,13 @@
-use log::{error, info, warn};
+use log::{info, warn};
+#[cfg(feature = "mongodb")]
+use log::error;
 use std::cmp;
 use std::env;
 use std::error::Error;
 use std::fs::OpenOptions;
 use std::io::Write;
 
+#[cfg(feature = "mongodb")]
 use crate::engine::botdb::BotDB;
 use crate::engine::botfactory::{BotFactory, BotType};
 use crate::engine::gameconfig::GameConfig;
@@ -53,6 +56,7 @@ pub fn filter_samples(selected_recipes: &mut Vec<GeneticRecipe>, keep_samples: u
 }
 
 pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
+    #[cfg(feature = "mongodb")]
     let botdb = config.botdb;
     let botrecipe = &config.botrecipe;
     if !botrecipe.is_null() {
@@ -82,12 +86,14 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
         1
     };
 
+    #[cfg(feature = "mongodb")]
     let genetic_name = &batch_config.bot_config.bot_names[genetic_index].as_str();
     let genetic_type = &batch_config.bot_config.bot_types[genetic_index];
 
     let mut selected_recipes = Vec::with_capacity(genetic_config.keep_samples as usize);
     let mut score_threshold = -999.0;
 
+    #[cfg(feature = "mongodb")]
     let mut best_botid = String::new();
 
     let mut scores_file = {
@@ -138,6 +144,7 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
                 gen
             );
             info!("Current best score: {:.3}", score_threshold);
+            #[cfg(feature = "mongodb")]
             if botdb && !best_botid.is_empty() {
                 info!("Current best botid: {}", best_botid);
             }
@@ -153,6 +160,11 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
                 score_threshold += (recipe.genetic_score - score_threshold) * 0.2;
 
                 // Write scores somewhere.
+                #[cfg(feature = "mongodb")]
+                let mut saved = false;
+                #[cfg(not(feature = "mongodb"))]
+                let saved = false;
+                #[cfg(feature = "mongodb")]
                 if botdb {
                     match BotDB::new().save_bot(&genetic_name, &recipe.recipe, recipe.genetic_score)
                     {
@@ -162,8 +174,12 @@ pub fn genetic_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
                         }
                         Err(x) => error!("Error saving bot: {}", x),
                     };
-                } else if let Some(x) = &mut scores_file {
-                    writeln!(x, "{}", recipe.recipe.to_string()).expect("Error writing scores.csv");
+                    saved = true;
+                }
+                if !saved {
+                    if let Some(x) = &mut scores_file {
+                        writeln!(x, "{}", recipe.recipe.to_string()).expect("Error writing scores.csv");
+                    }
                 }
             }
 

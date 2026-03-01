@@ -1,4 +1,3 @@
-use serde::export::Formatter;
 use std::fmt;
 
 pub type GameScore = f32;
@@ -110,7 +109,7 @@ impl GameResult {
 }
 
 impl fmt::Display for GameResult {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.status {
             GameStatus::Open => write!(f, "Game in progress"),
             GameStatus::Tie => write!(f, "RESULT: Tie"),

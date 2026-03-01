@@ -61,7 +61,6 @@ pub mod games {
 use crate::engine::gameconfig::RunMode;
 use engine::runners::batchrunner::batch_runner;
 use engine::runners::gen2runner::gen2_runner;
-use engine::runners::geneticrunner::genetic_runner;
 use engine::runners::singlerunner::single_runner;
 
 fn get_exe_dir() -> io::Result<PathBuf> {
