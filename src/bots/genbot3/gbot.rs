@@ -1,7 +1,7 @@
 use crate::bots::genbot3::nodes::{get_node_instance, get_random_node_instance, Node, NodeOutput};
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameobject::GameObject;
-use crate::engine::gameplayer::{GamePlayer, PlayerData};
+use crate::engine::gameplayer::{GamePlayer, MutationIntensity, PlayerData};
 
 use rand::seq::SliceRandom;
 use rand::Rng;
@@ -231,6 +231,50 @@ impl GamePlayer for GenBot3 {
         self.nodes[node_index].input_indexes = Vec::with_capacity(num_inputs as usize);
         for index in indexes.choose_multiple(&mut rand::thread_rng(), num_inputs) {
             self.nodes[node_index].add_input_node(*index);
+        }
+    }
+
+    fn mutate_with_intensity(&mut self, intensity: MutationIntensity) {
+        for _ in 0..intensity.count {
+            self.mutate();
+        }
+    }
+
+    fn crossover(&mut self, other: &serde_json::Value) {
+        if let Some(serde_json::Value::String(ref other_recipe)) = other.get("recipe") {
+            let mut rng = rand::thread_rng();
+            // Parse the other recipe's output nodes.
+            let other_blocks: Vec<&str> = other_recipe.split(',').collect();
+            let mut other_output_nodes = Vec::new();
+            for block in &other_blocks {
+                let parts: Vec<&str> = block.split(':').collect();
+                if parts[0] == "NODE_OUTPUT" {
+                    let mut instance = NodeOutput::default();
+                    for input_number in &parts[1..] {
+                        if let Ok(index) = input_number.parse::<usize>() {
+                            instance.add_input_node(index);
+                        }
+                    }
+                    other_output_nodes.push(instance);
+                }
+            }
+
+            // For each output node, coin-flip whether to swap.
+            for (i, other_node) in other_output_nodes.into_iter().enumerate() {
+                if i >= self.output_nodes.len() {
+                    break;
+                }
+                if rng.gen::<bool>() {
+                    // Bounds guard: check all input indexes are valid.
+                    let valid = other_node
+                        .input_indexes
+                        .iter()
+                        .all(|&idx| idx < self.nodes.len());
+                    if valid {
+                        self.output_nodes[i] = other_node;
+                    }
+                }
+            }
         }
     }
 }

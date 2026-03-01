@@ -280,5 +280,22 @@ pub fn gen2_runner(config: GameConfig) -> Result<(), Box<dyn Error>> {
         }
     }
 
+    {
+        let stack = bot_stack.lock().unwrap();
+        if let Some(ref recipe) = stack.best_recipe {
+            let recipe_path = match env::current_exe() {
+                Ok(x) => {
+                    let mut path = x.parent().expect("Error getting parent dir").to_path_buf();
+                    path.push("best.recipe");
+                    path
+                }
+                Err(_) => panic!("Error getting current exe path"),
+            };
+            std::fs::write(&recipe_path, recipe.to_string())
+                .expect("Error writing best.recipe");
+            info!("Saved best recipe to {}", recipe_path.display());
+        }
+    }
+
     Ok(())
 }

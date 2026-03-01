@@ -34,6 +34,7 @@ pub mod engine {
     pub mod runners {
         pub mod batchrunner;
         pub mod gen2runner;
+        pub mod gen3runner;
         pub mod geneticrunner;
         pub mod singlerunner;
         pub mod genetic {
@@ -61,6 +62,7 @@ pub mod games {
 use crate::engine::gameconfig::RunMode;
 use engine::runners::batchrunner::batch_runner;
 use engine::runners::gen2runner::gen2_runner;
+use engine::runners::gen3runner::gen3_runner;
 use engine::runners::singlerunner::single_runner;
 
 fn get_exe_dir() -> io::Result<PathBuf> {
@@ -82,6 +84,7 @@ fn main() {
             //genetic_runner
             gen2_runner
         }
+        RunMode::Genetic3 => gen3_runner,
     };
 
     let now = Instant::now();

@@ -1,6 +1,13 @@
 use crate::engine::gameobject::GameObject;
 use crate::engine::gameresult::{GameScore, NULL_SCORE};
 
+#[derive(Debug, Clone, Copy)]
+pub struct MutationIntensity {
+    pub count: u32,
+    pub step_scale: f32,
+    pub correlated: bool,
+}
+
 #[derive(Default)]
 pub struct PlayerData {
     pub name: String,
@@ -54,6 +61,12 @@ pub trait GamePlayer: GameObject + Send {
     }
 
     fn mutate(&mut self) {}
+    fn mutate_with_intensity(&mut self, intensity: MutationIntensity) {
+        for _ in 0..intensity.count {
+            self.mutate();
+        }
+    }
+    fn crossover(&mut self, _other: &serde_json::Value) {}
     fn should_show_result(&self) -> bool {
         self.get_data().should_show_result
     }

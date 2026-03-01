@@ -2,9 +2,14 @@ use crate::bots::nbot1::neurons::NeuronLayer;
 
 use crate::engine::gamebase::GameInfo;
 use crate::engine::gameobject::GameObject;
-use crate::engine::gameplayer::{GamePlayer, PlayerData};
+use crate::engine::gameplayer::{GamePlayer, MutationIntensity, PlayerData};
 
 use rand::Rng;
+
+pub struct NBot1Config {
+    pub nodes_per_layer: usize,
+    pub num_hidden_layers: usize,
+}
 
 #[derive(Default)]
 pub struct NBot1 {
@@ -16,13 +21,23 @@ pub struct NBot1 {
 
 impl NBot1 {
     pub fn new(game_info: &GameInfo) -> Self {
+        Self::new_with_config(
+            game_info,
+            NBot1Config {
+                nodes_per_layer: game_info.input_count as usize,
+                num_hidden_layers: 2,
+            },
+        )
+    }
+
+    pub fn new_with_config(game_info: &GameInfo, config: NBot1Config) -> Self {
         let mut data = PlayerData::default();
         data.name = String::from("NBot1");
         let mut obj = NBot1 {
             player_data: data,
             layers: Vec::new(),
-            nodes_per_layer: game_info.input_count as usize,
-            num_layers: 3,
+            nodes_per_layer: config.nodes_per_layer,
+            num_layers: config.num_hidden_layers + 1,
         };
         obj.create(game_info);
         obj
@@ -38,6 +53,28 @@ impl NBot1 {
 
         let output_layer = NeuronLayer::generate(game_info.output_count as usize, prev_layer_nodes);
         self.layers.push(output_layer);
+    }
+
+    fn mutate_single(&mut self, step_scale: f32) {
+        let mut rng = rand::thread_rng();
+        let layer_index = rng.gen_range(0, self.layers.len());
+        let node_index = rng.gen_range(0, self.layers[layer_index].nodes.len());
+        let range = 0.5 * step_scale;
+        if rng.gen::<bool>() {
+            let i = rng.gen_range(
+                0,
+                self.layers[layer_index].nodes[node_index]
+                    .input_weights
+                    .len(),
+            );
+            let weight = self.layers[layer_index].nodes[node_index].input_weights[i];
+            self.layers[layer_index].nodes[node_index].input_weights[i] =
+                weight + rng.gen_range(-range, range);
+        } else {
+            let bias = self.layers[layer_index].nodes[node_index].bias;
+            self.layers[layer_index].nodes[node_index].bias =
+                bias + rng.gen_range(-range, range);
+        }
     }
 }
 
@@ -100,23 +137,43 @@ impl GamePlayer for NBot1 {
     }
 
     fn mutate(&mut self) {
+        self.mutate_single(1.0);
+    }
+
+    fn mutate_with_intensity(&mut self, intensity: MutationIntensity) {
         let mut rng = rand::thread_rng();
-        let layer_index = rng.gen_range(0, self.layers.len());
-        let node_index = rng.gen_range(0, self.layers[layer_index].nodes.len());
-        if rng.gen::<bool>() {
-            let i = rng.gen_range(
-                0,
-                self.layers[layer_index].nodes[node_index]
-                    .input_weights
-                    .len(),
-            );
-            let weight = self.layers[layer_index].nodes[node_index].input_weights[i];
-            self.layers[layer_index].nodes[node_index].input_weights[i] =
-                weight + rng.gen_range(-0.5, 0.5);
+        if intensity.correlated {
+            // Correlated mode: pick one neuron and perturb all its weights + bias together.
+            let layer_index = rng.gen_range(0, self.layers.len());
+            let node_index = rng.gen_range(0, self.layers[layer_index].nodes.len());
+            let range = 0.5 * intensity.step_scale;
+            for w in &mut self.layers[layer_index].nodes[node_index].input_weights {
+                *w += rng.gen_range(-range, range);
+            }
+            self.layers[layer_index].nodes[node_index].bias += rng.gen_range(-range, range);
         } else {
-            let bias = self.layers[layer_index].nodes[node_index].bias;
-            self.layers[layer_index].nodes[node_index].bias =
-                bias + rng.gen_range(-0.5, 0.5);
+            for _ in 0..intensity.count {
+                self.mutate_single(intensity.step_scale);
+            }
+        }
+    }
+
+    fn crossover(&mut self, other: &serde_json::Value) {
+        if let Some(serde_json::Value::Array(ref other_layers)) = other.get("layers") {
+            let mut rng = rand::thread_rng();
+            for (i, other_layer_json) in other_layers.iter().enumerate() {
+                if i >= self.layers.len() {
+                    break;
+                }
+                if !rng.gen::<bool>() {
+                    continue;
+                }
+                let mut other_layer = NeuronLayer::default();
+                other_layer.from_json(other_layer_json);
+                if other_layer.nodes.len() == self.layers[i].nodes.len() {
+                    self.layers[i] = other_layer;
+                }
+            }
         }
     }
 }

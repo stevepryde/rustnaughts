@@ -1,4 +1,5 @@
 use argparse::{ArgumentParser, Store, StoreTrue};
+use std::env;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
@@ -21,6 +22,7 @@ pub enum RunMode {
     Single,
     Batch,
     Genetic,
+    Genetic3,
 }
 
 /// The config required to construct bots.
@@ -62,6 +64,8 @@ pub struct GameConfig {
     pub run_mode: RunMode,
     pub botdb: bool,
     pub botrecipe: serde_json::Value,
+    pub use_gen3: bool,
+    pub play_mode: bool,
     log_base_dir: PathBuf,
     data_base_dir: PathBuf,
     bot_names: [String; 2],
@@ -101,6 +105,8 @@ impl GameConfig {
             wild_samples: 0,
             botrecipe: serde_json::Value::Null,
             botdb: false,
+            use_gen3: false,
+            play_mode: false,
         }
     }
 
@@ -110,7 +116,9 @@ impl GameConfig {
         self.sanitise_args();
         self.init_logging().expect("Error setting up logging");
 
-        if self.genetic_mode {
+        if self.genetic_mode && self.use_gen3 {
+            self.run_mode = RunMode::Genetic3;
+        } else if self.genetic_mode {
             self.run_mode = RunMode::Genetic;
         } else if self.batch_mode {
             self.run_mode = RunMode::Batch;
@@ -135,12 +143,15 @@ impl GameConfig {
                 .required();
 
             ap.refer(&mut bot2)
-                .add_argument("bot2", Store, "Second bot")
-                .required();
+                .add_argument("bot2", Store, "Second bot");
 
             ap.refer(&mut game)
-                .add_option(&["--game"], Store, "The game to run")
-                .required();
+                .add_option(&["--game"], Store, "The game to run");
+            ap.refer(&mut self.play_mode).add_option(
+                &["--play"],
+                StoreTrue,
+                "Play against a trained bot (auto-loads best.recipe)",
+            );
             ap.refer(&mut self.batch_size).add_option(
                 &["--batch"],
                 Store,
@@ -184,6 +195,11 @@ impl GameConfig {
                 Store,
                 "Filename to load recipe from",
             );
+            ap.refer(&mut self.use_gen3).add_option(
+                &["--gen3"],
+                StoreTrue,
+                "Use gen3 runner (population-based genetic algorithm)",
+            );
             ap.parse_args_or_exit();
         }
 
@@ -216,6 +232,53 @@ impl GameConfig {
 
     /// Sanitise CLI args into sane defaults and catch errors.
     fn sanitise_args(&mut self) {
+        // Play mode: set up for a single interactive game against a trained bot.
+        if self.play_mode {
+            if self.game == GameType::Unknown {
+                self.game = GameType::Naughts;
+            }
+
+            let human_bot = match self.game {
+                GameType::Naughts => "naughts.human",
+                GameType::Connect4 => "connect4.human",
+                _ => "naughts.human",
+            };
+            self.bot_names[1] = human_bot.to_string();
+
+            if self.botrecipe.is_null() {
+                let recipe_path = match env::current_exe() {
+                    Ok(x) => {
+                        let mut p = x.parent().expect("Error getting parent dir").to_path_buf();
+                        p.push("best.recipe");
+                        p
+                    }
+                    Err(_) => panic!("Error getting current exe path"),
+                };
+                if recipe_path.exists() {
+                    let recipe_str = fs::read_to_string(&recipe_path)
+                        .expect("Error reading best.recipe file");
+                    if recipe_str.starts_with('{') {
+                        self.botrecipe =
+                            serde_json::from_str(&recipe_str).expect("Invalid JSON format");
+                    } else {
+                        self.botrecipe = serde_json::json!({ "recipe": recipe_str });
+                    }
+                    println!("Loaded recipe from {}", recipe_path.display());
+                } else {
+                    println!(
+                        "Warning: No best.recipe found at {}. Using random bot.",
+                        recipe_path.display()
+                    );
+                }
+            }
+
+            // Force single-game mode.
+            self.batch_size = 1;
+            self.batch_mode = false;
+            self.genetic_mode = false;
+            return;
+        }
+
         // Tidy up default args.
         if self.batch_size > 1 {
             self.batch_mode = true;

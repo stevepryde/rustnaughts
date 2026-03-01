@@ -2,7 +2,7 @@ use crate::engine::gamebase::GameTrait;
 use crate::games::connect4::singlegame::Connect4Game;
 use crate::games::naughts::singlegame::NaughtsGame;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum GameType {
     Connect4,
     Naughts,

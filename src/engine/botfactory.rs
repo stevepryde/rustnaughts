@@ -140,6 +140,13 @@ impl BotFactory {
         }
     }
 
+    pub fn create_genetic_bot(&self) -> DynBot {
+        match self.genetic_index {
+            Some(x) => self.create_bot(&self.bot_config.bot_types[x]),
+            None => panic!("Can't create genetic bot before setting genetic index!"),
+        }
+    }
+
     pub fn create_bots(&self) -> (DynBot, DynBot) {
         (
             self.create_bot_with_recipe(0, &self.bot_config.bot_types[0]),
